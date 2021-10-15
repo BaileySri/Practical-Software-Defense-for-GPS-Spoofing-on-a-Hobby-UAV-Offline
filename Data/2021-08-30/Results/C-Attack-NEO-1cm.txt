@@ -1,0 +1,25 @@
+---Accelerometer and OF---
+Whole test: 58 of 1509
+Mission/Attack: 36 of 604
+Streak of Windows: 3
+Time-To-Detection: 4536.243ms
+---Accelerometer and GPS---
+Whole test: 114 of 755
+Mission/Attack: 81 of 302
+Streak of Windows: 28
+Time-To-Detection: 31.379ms
+---GPS and Magnetometer---
+Whole test: 630 of 755
+Mission/Attack: 302 of 302
+Streak of Windows: 302
+Time-To-Detection: 31.379ms
+---GPS and OF---
+Whole test: 495 of 755
+Mission/Attack: 302 of 302
+Streak of Windows: 302
+Time-To-Detection: 31.379ms
+-Ground Course-
+Whole test: 340 of 755
+Mission/Attack: 302 of 302
+Streak of Windows: 302
+Time-To-Detection: 31.379ms
