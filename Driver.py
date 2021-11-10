@@ -47,7 +47,12 @@ def process(date, missions, times):
         CNFs = [CNF1, CNF2, CNF3]
         ACOs = [ACO1, ACO2]
         CNF = reduce(lambda left, right: pd.merge(left, right, on='TimeUS'), CNFs)
-        ACO = reduce(lambda left, right: pd.merge(left, right, on='TimeUS'), ACOs)      
+        ACO = reduce(lambda left, right: pd.merge(left, right, on='TimeUS'), ACOs)     
+        CNF = CNF.drop(CNF[CNF.TimeUS < timing[0]].index)
+        CNF = CNF.drop(CNF[CNF.TimeUS > timing[len(timing) - 1]].index).reset_index(drop=True)
+        ACO = ACO.drop(ACO[ACO.TimeUS < timing[0]].index)
+        ACO = ACO.drop(ACO[ACO.TimeUS > timing[len(timing) - 1]].index).reset_index(drop=True)
+        
         coverages = {"3-Axis":{"ACCOF":{},"ACCGPS":{},"GPSOF":{}},
                      "Net"   :{"ACCOF":{},"ACCGPS":{},"GPSOF":{}},
                      "GC"    :{"GPSMAG":{}, "GPSOF":{}}}
@@ -69,6 +74,8 @@ def process(date, missions, times):
         
         
         # Coverage where threshold = 1
+        # The CNFs used here is not a typo, we are matching ACO
+        # frames to CNF frames for coverage details later
         coverages['3-Axis']['ACCOF'][1] = np.array([0] * len(CNF))
         for i in unions:
             try:
@@ -161,8 +168,6 @@ def process(date, missions, times):
                 results.append("TPR(Permissive): N/A")
             else:
                 results.append("TPR(Permissive): " + str(round(TP/(TP+FN) * 100,2)))
-
-            res = res[(res['TimeUS'] > timing[0]) & (res['TimeUS'] < timing[2])]
         else: #Benign results
             frames_detected_test = res[(res['TimeUS'] >=timing[0]) & 
                                           (res['TimeUS']<=timing[1])]
@@ -186,8 +191,7 @@ def process(date, missions, times):
             else:
                 results.append("Detected Overall without Invalid (FPR): " + 
                                 str(frames_detected_test_valid) + "/" + str(frames_test_valid) +
-                                "(" + str(round(frames_detected_test_valid * 100/frames_test_valid, 2)) + "%)")           
-            res = res[(res['TimeUS'] > timing[0]) & (res['TimeUS'] < timing[1])]
+                                "(" + str(round(frames_detected_test_valid * 100/frames_test_valid, 2)) + "%)")
         results.append("Valid Frames (%): " + str(frames_test_valid * 100/frames_test))
         
         streak = 0
@@ -224,10 +228,10 @@ def process(date, missions, times):
             for i in range(len(res.index)):
                 counter = 0
                 # check if index is outside all possible frames
-                if res.index[i] > (len(CNF) - threshold + 1):
+                if res.index[i] > (len(ACO) - threshold + 1):
                     break
                 # check if enough frames are left to confirm
-                if (len(res.index) - i) < threshold:
+                if (len(res.index) - (i+threshold-1)) < threshold:
                     break
                 for s in seq:
                     if res.index[i+s] == res.index[i]+s:
@@ -347,9 +351,7 @@ def process(date, missions, times):
             if((TP+FN) == 0):
                 results.append("TPR(Permissive): N/A")
             else:
-                results.append("TPR(Permissive): " + str(round(TP/(TP+FN) * 100,2)))
-            
-            res = res[(res['TimeUS'] > timing[0]) & (res['TimeUS'] < timing[2])]
+                results.append("TPR(Permissive): " + str(round(TP/(TP+FN) * 100,2)))     
         else: #Benign results
             frames_detected_test = res[(res['TimeUS'] >=timing[0]) & 
                                           (res['TimeUS']<=timing[1])]
@@ -375,7 +377,6 @@ def process(date, missions, times):
                 results.append("Detected Overall without Invalid (FPR): " + 
                                 str(frames_detected_test_valid) + "/" + str(frames_test_valid) +
                                 "(" + str(round(frames_detected_test_valid * 100/frames_test_valid, 2)) + "%)")
-            res = res[(res['TimeUS'] > timing[0]) & (res['TimeUS'] < timing[1])]
         results.append("Valid Frames (%): " + str(frames_test_valid * 100/frames_test))
         
         streak = 0
@@ -415,7 +416,7 @@ def process(date, missions, times):
                 if res.index[i] > (len(CNF) - threshold + 1):
                     break
                 # check if enough frames are left to confirm
-                if (len(res.index) - i) < threshold:
+                if (len(res.index) - (i+threshold-1)) < threshold:
                     break
                 for s in seq:
                     if res.index[i+s] == res.index[i]+s:
@@ -547,8 +548,6 @@ def process(date, missions, times):
                 results.append("TPR(Permissive): N/A")
             else:
                 results.append("TPR(Permissive): " + str(round(TP/(TP+FN) * 100,2)))
-            
-            res = res[(res['TimeUS'] > timing[0]) & (res['TimeUS'] < timing[2])]
         else: #Benign results
             frames_detected_test = res[(res['TimeUS'] >=timing[0]) & 
                                           (res['TimeUS']<=timing[1])]
@@ -574,7 +573,6 @@ def process(date, missions, times):
                 results.append("Detected Overall without Invalid (FPR): " + 
                                 str(frames_detected_test_valid) + "/" + str(frames_test_valid) +
                                 "(" + str(round(frames_detected_test_valid * 100/frames_test_valid, 2)) + "%)")
-            res = res[(res['TimeUS'] > timing[0]) & (res['TimeUS'] < timing[1])]
         results.append("Valid Frames (%): " + str(frames_test_valid * 100/frames_test))
         
         streak = 0
@@ -615,7 +613,7 @@ def process(date, missions, times):
                 if CNF_index > (len(CNF) - threshold + 1):
                     break
                 # check if enough frames are left to confirm
-                if (len(res.index) - i) < threshold:
+                if (len(res.index) - (i+threshold-1)) < threshold:
                     break
                 for s in seq:
                     if CNF_index+s == CNF.index[CNF.TimeUS == res.iloc[i+s].TimeUS]:
@@ -736,8 +734,6 @@ def process(date, missions, times):
                 results.append("TPR(Permissive): N/A")
             else:
                 results.append("TPR(Permissive): " + str(round(TP/(TP+FN) * 100,2)))
-            
-            res = res[(res['TimeUS'] > timing[0]) & (res['TimeUS'] < timing[2])]
         else: #Benign results
             frames_detected_test = res[(res['TimeUS'] >=timing[0]) & 
                                           (res['TimeUS']<=timing[1])]
@@ -763,7 +759,6 @@ def process(date, missions, times):
                 results.append("Detected Overall without Invalid (FPR): " + 
                                 str(frames_detected_test_valid) + "/" + str(frames_test_valid) +
                                 "(" + str(round(frames_detected_test_valid * 100/frames_test_valid, 2)) + "%)")
-            res = res[(res['TimeUS'] > timing[0]) & (res['TimeUS'] < timing[1])]
         results.append("Valid Frames (%): " + str(frames_test_valid * 100/frames_test))
         
         streak = 0
@@ -804,7 +799,7 @@ def process(date, missions, times):
                 if CNF_index > (len(CNF) - threshold + 1):
                     break
                 # check if enough frames are left to confirm
-                if (len(res.index) - i) < threshold:
+                if (len(res.index) - (i+threshold-1)) < threshold:
                     break
                 for s in seq:
                     if CNF_index+s == CNF.index[CNF.TimeUS == res.iloc[i+s].TimeUS]:
@@ -918,8 +913,6 @@ def process(date, missions, times):
                 results.append("TPR(Permissive): N/A")
             else:
                 results.append("TPR(Permissive): " + str(round(TP/(TP+FN) * 100,2)))
-            
-            res = res[(res['TimeUS'] > timing[0]) & (res['TimeUS'] < timing[2])]
         else: #Benign results
             frames_detected_test = res[(res['TimeUS'] >=timing[0]) & 
                                           (res['TimeUS']<=timing[1])]
@@ -945,7 +938,6 @@ def process(date, missions, times):
                 results.append("Detected Overall without Invalid (FPR): " + 
                                 str(frames_detected_test_valid) + "/" + str(frames_test_valid) +
                                 "(" + str(round(frames_detected_test_valid * 100/frames_test_valid, 2)) + "%)")
-            res = res[(res['TimeUS'] > timing[0]) & (res['TimeUS'] < timing[1])]
         results.append("Valid Frames (%): " + str(frames_test_valid * 100/frames_test))
         
         streak = 0
@@ -986,7 +978,7 @@ def process(date, missions, times):
                 if CNF_index > (len(CNF) - threshold + 1):
                     break
                 # check if enough frames are left to confirm
-                if (len(res.index) - i) < threshold:
+                if (len(res.index) - (i+threshold-1)) < threshold:
                     break
                 for s in seq:
                     if CNF_index+s == CNF.index[CNF.TimeUS == res.iloc[i+s].TimeUS]:
@@ -1001,10 +993,10 @@ def process(date, missions, times):
         if len(coverages[conf_type][conf_sensors]) == 1:
             coverages[conf_type][conf_sensors][2] = np.array([0] * (len(CNF)-1))
 
-        #---GPS and OF---#
+#---GPS and OF---#
         results.append("---GPS and OF---")
         #Velocity Change
-        #NED
+    #NED
         results.append("--Tri-Axis Velocity--")
         North = pd.DataFrame(data = {'TimeUS':CNF['TimeUS'],'GPS':CNF['CGpN'],'GPe':CNF['GpsErr'],
                                       'OF':CNF['COFN'],'OFe':CNF['CNe']})
@@ -1107,8 +1099,6 @@ def process(date, missions, times):
                 results.append("TPR(Permissive): N/A")
             else:
                 results.append("TPR(Permissive): " + str(round(TP/(TP+FN) * 100,2)))
-            
-            res = res[(res['TimeUS'] > timing[0]) & (res['TimeUS'] < timing[2])]
         else: #Benign results
             frames_detected_test = res[(res['TimeUS'] >=timing[0]) & 
                                           (res['TimeUS']<=timing[1])]
@@ -1132,7 +1122,6 @@ def process(date, missions, times):
                 results.append("Detected Overall without Invalid (FPR): " + 
                                 str(frames_detected_test_valid) + "/" + str(frames_test_valid) +
                                 "(" + str(round(frames_detected_test_valid * 100/frames_test_valid, 2)) + "%)")
-            res = res[(res['TimeUS'] > timing[0]) & (res['TimeUS'] < timing[1])]
         results.append("Valid Frames (%): " + str(frames_test_valid * 100/frames_test))
 
         streak = 0
@@ -1173,7 +1162,7 @@ def process(date, missions, times):
                 if CNF_index > (len(CNF) - threshold + 1):
                     break
                 # check if enough frames are left to confirm
-                if (len(res.index) - i) < threshold:
+                if (len(res.index) - (i+threshold-1)) < threshold:
                     break
                 for s in seq:
                     if CNF_index+s == CNF.index[CNF.TimeUS == res.iloc[i+s].TimeUS]:
@@ -1188,7 +1177,7 @@ def process(date, missions, times):
         if len(coverages[conf_type][conf_sensors]) == 1:
             coverages[conf_type][conf_sensors][2] = np.array([0] * (len(CNF)-1))
 
-        #Net
+    #Net
         results.append("--Net Velocity--")
         res = confirm(pd.DataFrame(data = {'TimeUS':CNF['TimeUS'],
                                            'OF':(CNF[['COFN','COFE','COFD']]).apply(norm, axis=1),
@@ -1284,8 +1273,6 @@ def process(date, missions, times):
                 results.append("TPR(Permissive): N/A")
             else:
                 results.append("TPR(Permissive): " + str(round(TP/(TP+FN) * 100,2)))
-            
-            res = res[(res['TimeUS'] > timing[0]) & (res['TimeUS'] < timing[2])]
         else: #Benign results
             frames_detected_test = res[(res['TimeUS'] >=timing[0]) & 
                                           (res['TimeUS']<=timing[1])]
@@ -1309,7 +1296,6 @@ def process(date, missions, times):
                 results.append("Detected Overall without Invalid (FPR): " + 
                                 str(frames_detected_test_valid) + "/" + str(frames_test_valid) +
                                 "(" + str(round(frames_detected_test_valid * 100/frames_test_valid, 2)) + "%)")
-            res = res[(res['TimeUS'] > timing[0]) & (res['TimeUS'] < timing[1])]
         results.append("Valid Frames (%): " + str(frames_test_valid * 100/frames_test))
 
         streak = 0
@@ -1350,7 +1336,7 @@ def process(date, missions, times):
                 if CNF_index > (len(CNF) - threshold + 1):
                     break
                 # check if enough frames are left to confirm
-                if (len(res.index) - i) < threshold:
+                if (len(res.index) - (i+threshold-1)) < threshold:
                     break
                 for s in seq:
                     if CNF_index+s == CNF.index[CNF.TimeUS == res.iloc[i+s].TimeUS]:
@@ -1365,7 +1351,7 @@ def process(date, missions, times):
         if len(coverages[conf_type][conf_sensors]) == 1:
             coverages[conf_type][conf_sensors][2] = np.array([0] * (len(CNF)-1))
 
-        #Ground Course
+    #Ground Course
         results.append("-Ground Course-")
         dot = CNF[['COFN']]
         det = -CNF[['COFE']]
@@ -1472,8 +1458,6 @@ def process(date, missions, times):
                 results.append("TPR(Permissive): N/A")
             else:
                 results.append("TPR(Permissive): " + str(round(TP/(TP+FN) * 100,2)))
-            
-            res = res[(res['TimeUS'] > timing[0]) & (res['TimeUS'] < timing[2])]
         else: #Benign results
             frames_detected_test = res[(res['TimeUS'] >=timing[0]) & 
                                           (res['TimeUS']<=timing[1])]
@@ -1499,7 +1483,6 @@ def process(date, missions, times):
                 results.append("Detected Overall without Invalid (FPR): " + 
                                 str(frames_detected_test_valid) + "/" + str(frames_test_valid) +
                                 "(" + str(round(frames_detected_test_valid * 100/frames_test_valid, 2)) + "%)")
-            res = res[(res['TimeUS'] > timing[0]) & (res['TimeUS'] < timing[1])]
         results.append("Valid Frames (%): " + str(frames_test_valid * 100/frames_test))
         
         streak = 0
@@ -1540,7 +1523,7 @@ def process(date, missions, times):
                 if CNF_index > (len(CNF) - threshold + 1):
                     break
                 # check if enough frames are left to confirm
-                if (len(res.index) - i) < threshold:
+                if (len(res.index) - (i+threshold-1)) < threshold:
                     break
                 for s in seq:
                     if CNF_index+s == CNF.index[CNF.TimeUS == res.iloc[i+s].TimeUS]:
@@ -1573,8 +1556,6 @@ def process(date, missions, times):
                     if len(value) < i:
                         continue
                     inter = np.where(inter ==0, value[i], inter)
-                    print("inter:" + str(np.count_nonzero(inter)))
-                    print("value[i]:" + str(np.count_nonzero(value[i])))
                 triaxis = np.append(triaxis, np.count_nonzero(inter)/len(inter))
                 
             #Net processing
@@ -1617,40 +1598,41 @@ def process(date, missions, times):
                                'GC FPR':gc}).to_csv(graphData,index=False)
             
             # Output pairwise FPR data
-            # Net
-            ACCOF = np.array([])
-            GPSOF = np.array([])
-            ACCGPS = np.array([])
-            outFile = pairwiseData + '-Net.csv'
-            for key, value in coverages['Net'].items():
-                for key2, value2 in value.items():
-                    if key == 'ACCOF':
-                        ACCOF = np.append(ACCOF, np.count_nonzero(value2)/len(value2))
-                    elif key == 'GPSOF':
-                        GPSOF = np.append(GPSOF, np.count_nonzero(value2)/len(value2))
-                    if key == 'ACCGPS':
-                        ACCGPS = np.append(ACCGPS, np.count_nonzero(value2)/len(value2))
-            FPR = pd.DataFrame(data={'Threshold': range(1,len(ACCOF)+1),
-                                   'ACCOF':ACCOF,
-                                   'GPSOF':GPSOF,
-                                   'ACCGPS':ACCGPS})
-            FPR.to_csv(outFile, index=False)
-                        
-            # Output pairwise FPR data
-            # GC
-            outFile = pairwiseData + '-GC.csv'
-            GPSMAG = np.array([])
-            GPSOF = np.array([])
-            for key, value in coverages['GC'].items():
-                for key2, value2 in value.items():
-                    if key == 'GPSMAG':
-                        GPSMAG = np.append(GPSMAG, np.count_nonzero(value2)/len(value2))
-                    elif key == 'GPSOF':
-                        GPSOF = np.append(GPSOF, np.count_nonzero(value2)/len(value2))
-            FPR = pd.DataFrame(data={'Threshold': range(1,len(ACCOF)+1),
-                                   'GPSMAG':GPSMAG,
-                                   'GPSOF':GPSOF})
-            FPR.to_csv(outFile, index=False)
+            # Net, 3-Axis, and GC
+            suffixes = ['Net','3-Axis','GC']
+            outFiles = [pairwiseData + '-' + suffix + '.csv' for suffix in suffixes]
+            for i in range(3):
+                ACCOF = np.array([])
+                GPSOF = np.array([])
+                ACCGPS = np.array([])
+                if i == 1:
+                    print("hi")
+                for key, value in coverages[suffixes[i]].items():
+                    for key2, value2 in value.items():
+                        if key == 'ACCOF':
+                            ACCOF = np.append(ACCOF, np.count_nonzero(value2)/len(value2))
+                        elif key == 'GPSOF':
+                            GPSOF = np.append(GPSOF, np.count_nonzero(value2)/len(value2))
+                        elif key == 'ACCGPS':
+                            ACCGPS = np.append(ACCGPS, np.count_nonzero(value2)/len(value2))
+                # Match array lengths then output the csv
+                if len(ACCOF) > len(GPSOF):
+                    GPSOF = np.pad(GPSOF, (0,len(ACCOF) - len(GPSOF)),'constant')
+                elif len(GPSOF) > len(ACCOF):
+                    ACCOF = np.pad(ACCOF, (0,len(GPSOF) - len(ACCOF)),'constant')
+                if len(ACCOF) > len(ACCGPS):
+                    ACCGPS = np.pad(ACCGPS, (0,len(ACCOF) - len(ACCGPS)),'constant')
+                elif len(ACCGPS) > len(ACCOF):
+                    ACCOF = np.pad(ACCOF, (0,len(ACCGPS) - len(ACCOF)),'constant')
+                if len(GPSOF) > len(ACCGPS):
+                    ACCGPS = np.pad(ACCGPS, (0,len(GPSOF) - len(ACCGPS)),'constant')
+                elif len(ACCGPS) > len(GPSOF):
+                    GPSOF = np.pad(GPSOF, (0,len(ACCGPS) - len(GPSOF)),'constant')
+                FPR = pd.DataFrame(data={'Threshold': range(1,len(ACCOF)+1),
+                                       'ACCOF':ACCOF,
+                                       'GPSOF':GPSOF,
+                                       'ACCGPS':ACCGPS})
+                FPR.to_csv(outFiles[i], index=False)        
 
         elif len(timing) == 3:
             net = []
@@ -1675,8 +1657,6 @@ def process(date, missions, times):
                     if len(value) < i:
                         continue
                     inter = np.where(inter ==0, value[i], inter)
-                    print("inter:" + str(np.count_nonzero(inter)))
-                    print("value[i]:" + str(np.count_nonzero(value[i])))
                 gc.append(inter)
             
             # Match array lengths then output the csv
@@ -1726,36 +1706,37 @@ def process(date, missions, times):
                                'TTD': TTD}).to_csv(graphData,index=False) 
 
 def main():
-    date = "2021-10-04"
-    missions = ["C-Attack-NEO-1cm.txt","C-Attack-NEO-250cm.txt",
-                "C-Attack-ZED-1cm.txt","C-Attack-ZED-250cm.txt",
+    date = "2021-11-03"
+    missions = ["C-Motion-NEO-1cm.txt","C-Motion-NEO-250cm.txt",
+                "C-Motion-ZED-1cm.txt","C-Motion-ZED-250cm.txt",
                 "C-Idle-NEO-1cm.txt","C-Idle-NEO-250cm.txt",
                 "C-Idle-ZED-1cm.txt","C-Idle-ZED-250cm.txt",
+                "C-Stealth-NEO.txt","C-Stealth-ZED.txt",
                 "C-Circle-NEO.txt","C-Circle-ZED.txt",
                 "C-Square-NEO.txt","C-Square-ZED.txt",
                 "C-Wave-NEO.txt","C-Wave-ZED.txt",
-                "P-Attack-NEO-1cm.txt","P-Attack-NEO-250cm.txt",
-                "P-Attack-ZED-1cm.txt","P-Attack-ZED-250cm.txt",
+                "P-Motion-NEO-1cm.txt","P-Motion-NEO-250cm.txt",
+                "P-Motion-ZED-1cm.txt","P-Motion-ZED-250cm.txt",
                 "P-Circle-NEO.txt","P-Circle-ZED.txt",
                 "P-Square-NEO.txt","P-Square-ZED.txt",
                 "P-Wave-NEO.txt","P-Wave-ZED.txt"]
-    missions = ["P-Circle-ZED.txt"]
     # Attack formatted as [Auto Mode, Enabled Attack, Disabled Attack]
     # Idle formatted as [Altitude Reached, Enabled Attack, Disabled Attack]
     # Square,Circle,Wave formatted as [Auto Mode, RTL]
-    times = [[227135776,255361148,315758646], [227095792,255158729,315556227],
-             [226066204,253353618,313743619], [226108687,253750959,314355874],
-             [257211208,262853983,323253980], [257128741,262856482,323251481],
-             [257113747,262150931,322738353], [257168725,262858981,323251481],
-             [253141203,375058250], [254150799,375128222],
-             [226131178,346181472], [227100790,348048225],
-             [227060806,363968521], [227118283,363568681],
-             [157873492,183854762,244254759], [157893484,183714818,244054006],
-             [158094237,184173801,244493830], [157873492,184054682,244353886],
-             [139953996,180113759], [138873595,179114159],
-             [139874028,278513550], [138873595,277713870],
-             [139874028,235913930], [139953996,236013890]]
-    times = [[138873595,179114159]]
+    # Stealth formatted as [Altitude Reached, Enabled Attacked, RTL]
+    times = [[149028698,170660875,231280784], [149026199,170660875,231278285],
+             [149028698,169861195,230481104], [149028698,169866193,230458613],
+             [149258606,157078810,217678727], [149256107,157086307,217681226],
+             [149256107,157058818,217676228], [149256107,157066315,217668731],
+             [149256107,157286227,173663840], [149256107,157266235,219029020],
+             [151028731,273029078], [151028731,273029078],
+             [149028698,256028381], [149028698,256030880],
+             [149028698,230028785], [149028698,230028785],
+             [140060620,168280161,228580198], [140060620,168280161,228580198],
+             [140060620,168080241,228380278], [140060620,168080241,228380278],
+             [181400744,381560648], [181400744,381560648],
+             [148200696,281920520], [148200696,281820560],
+             [149800889,236620314], [149700929,236620314]]
     process(date, missions, times)
 
 if __name__ == "__main__":
