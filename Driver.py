@@ -26,7 +26,7 @@ def process(date, missions, times):
     try:
         mkdir(base + "/Results/PairwiseData/")
     except:
-        print("GraphData directory already exists.")
+        print("PairwiseData directory already exists.")
     tests = zip(missions, times)
     for name, timing in tests:
         results = []
@@ -65,12 +65,9 @@ def process(date, missions, times):
                     'Acc':ACO['CAN'],'Acce':ACO['CAe']})
         East = pd.DataFrame(data = {'TimeUS':ACO['TimeUS'],'OF':ACO['COFE']-ACO['POFE'],'OFe':ACO['CNe'] + ACO['PNe'],
                     'Acc':ACO['CAE'],'Acce':ACO['CAe']})
-        Down = pd.DataFrame(data = {'TimeUS':ACO['TimeUS'],'OF':ACO['COFD']-ACO['POFD'],'OFe':ACO['CNe'] + ACO['PNe'],
-                    'Acc':ACO['CAD'],'Acce':ACO['CAe']})
         res1 = confirm(North)
         res2 = confirm(East)
-        res3 = confirm(Down)
-        unions = res1.index.union(res2.index).union(res3.index)
+        unions = res1.index.union(res2.index)
         
         
         # Coverage where threshold = 1
@@ -88,8 +85,7 @@ def process(date, missions, times):
         invalid = pd.DataFrame(columns=ACO.columns)
         for index, row in ACO.iterrows():
             if ((((row.COFN - row.POFN) <= (row.CNe + row.PNe)) and (row.CAN <= row.CAe)) and 
-                (((row.COFE - row.POFE) <= (row.CEe + row.PEe)) and (row.CAE <= row.CAe)) and
-                (((row.COFD - row.POFD) <= (row.CDe + row.PDe)) and (row.CAD <= row.CAe))):
+                (((row.COFE - row.POFE) <= (row.CEe + row.PEe)) and (row.CAE <= row.CAe))):
                     invalid = invalid.append(row)
             else:
                 continue
@@ -251,15 +247,13 @@ def process(date, missions, times):
         results.append("--Net Velocity--")
         North = ACO['COFN'] - ACO['POFN']
         East = ACO['COFE'] - ACO['POFE']
-        Down = ACO['COFD'] - ACO['POFD']
         Ne = ACO['CNe'] + ACO['PNe']
         Ee = ACO['CEe'] + ACO['PEe']
-        De = ACO['CDe'] + ACO['PDe']
         res = confirm(pd.DataFrame(data = {'TimeUS':ACO['TimeUS'],
-                                   'OF':(pd.DataFrame(data = {"N":North, "E":East, "D":Down})).apply(norm, axis=1),
-                                   'OFe':(pd.DataFrame(data = {"N":Ne, "E":Ee, "D":De})).apply(norm,axis=1),
-                                   'ACC':(ACO[['CAN','CAE','CAD']]).apply(norm,axis=1),
-                                   'ACCe':sqrt(3)*ACO['CAe']}))
+                                   'OF':(pd.DataFrame(data = {"N":North, "E":East})).apply(norm, axis=1),
+                                   'OFe':(pd.DataFrame(data = {"N":Ne, "E":Ee})).apply(norm,axis=1),
+                                   'ACC':(ACO[['CAN','CAE']]).apply(norm,axis=1),
+                                   'ACCe':sqrt(2)*ACO['CAe']}))
         
         # Coverage where threshold = 1
         coverages['Net']['ACCOF'][1] = np.array([0] * len(CNF))
@@ -272,8 +266,8 @@ def process(date, missions, times):
         #Separating frames that are not useful for confirmation
         invalid = pd.DataFrame(columns=ACO.columns)
         for index, row in ACO.iterrows():
-            if (norm([row.COFN, row.COFE, row.COFD]) <= norm([row.CNe, row.CEe, row.CDe]) and
-                norm([row.CAN, row.CAE, row.CAD]) <= (sqrt(3) * row.CAe)):
+            if (norm([row.COFN, row.COFE]) <= norm([row.CNe, row.CEe]) and
+                norm([row.CAN, row.CAE]) <= (sqrt(2) * row.CAe)):
                     invalid = invalid.append(row)
             else:
                 continue
@@ -1002,12 +996,9 @@ def process(date, missions, times):
                                       'OF':CNF['COFN'],'OFe':CNF['CNe']})
         East = pd.DataFrame(data = {'TimeUS':CNF['TimeUS'],'GPS':CNF['CGpE'],'GPe':CNF['GpsErr'],
                                     'OF':CNF['COFE'],'OFe':CNF['CEe']})
-        Down = pd.DataFrame(data = {'TimeUS':CNF['TimeUS'],'GPS':CNF['CGpD'],'GPe':CNF['GpsErr'],
-                                      'OF':CNF['COFD'],'OFe':CNF['CDe']})
         res1 = confirm(North)
         res2 = confirm(East)
-        res3 = confirm(Down)
-        unions = res1.index.union(res2.index).union(res3.index)
+        unions = res1.index.union(res2.index)
         res = CNF.iloc[unions]
         
         # Coverage where threshold = 1
@@ -1019,8 +1010,7 @@ def process(date, missions, times):
         invalid = pd.DataFrame(columns=CNF.columns)
         for index, row in CNF.iterrows():
             if (((row.CGpN <= row.GpsErr) and (row.COFN <= row.CNe)) and 
-                ((row.CGpE <= row.GpsErr) and (row.COFE <= row.CEe)) and
-                ((row.CGpD <= row.GpsErr) and (row.COFD <= row.CDe))):
+                ((row.CGpE <= row.GpsErr) and (row.COFE <= row.CEe))):
                     invalid = invalid.append(row)
             else:
                 continue
@@ -1180,10 +1170,11 @@ def process(date, missions, times):
     #Net
         results.append("--Net Velocity--")
         res = confirm(pd.DataFrame(data = {'TimeUS':CNF['TimeUS'],
-                                           'OF':(CNF[['COFN','COFE','COFD']]).apply(norm, axis=1),
-                                           'OFe':(CNF[['CNe','CEe','CDe']]).apply(norm,axis=1),
-                                           'GPS':(CNF[['CGpN','CGpE','CGpD']]).apply(norm,axis=1),
-                                           'GPSe':sqrt(3)*(CNF['CGpe'] + CNF['PGpe'])/((CNF.iloc[5].TimeUS-CNF.iloc[4].TimeUS)/1000000)}))
+                                           'OF':(CNF[['COFN','COFE']]).apply(norm, axis=1),
+                                           'OFe':(CNF[['CNe','CEe',]]).apply(norm,axis=1),
+                                           'GPS':(CNF[['CGpN','CGpE']]).apply(norm,axis=1),
+                                           'GPSe':sqrt(2)*CNF['CGpe']/((CNF.iloc[5].TimeUS-CNF.iloc[4].TimeUS)/1000000.0)}))
+                                                                                      # I selected two arbitrary points to get the dT
         
         # Coverage where threshold = 1
         coverages['Net']['GPSOF'][1] = np.array([0] * len(CNF))
@@ -1193,8 +1184,8 @@ def process(date, missions, times):
         #Separating frames that are not useful for confirmation
         invalid = pd.DataFrame(columns=CNF.columns)
         for index, row in CNF.iterrows():
-            if (norm([row.COFN, row.COFE, row.COFD]) <= norm([row.CNe, row.CEe, row.CDe]) and
-                norm([row.CGpN, row.CGpE, row.CGpD]) <= (sqrt(3) * row.CGpe)):
+            if (norm([row.COFN, row.COFE]) <= norm([row.CNe, row.CEe]) and
+                norm([row.CGpN, row.CGpE]) <= (sqrt(2) * row.CGpe)):
                     invalid = invalid.append(row)
             else:
                 continue
@@ -1737,9 +1728,9 @@ def main():
              [181400744,381560648], [181400744,381560648],
              [148200696,281920520], [148200696,281820560],
              [149800889,236620314], [149700929,236620314]]
-    date = "2021-11-12"
-    missions = ["C-Square-NoBias.txt"]
-    times = [[51031246,158033428]]
+    date = "2021-11-14"
+    missions = ["C-Square-ZED.txt"]
+    times = [[51026248,158033428]]
     process(date, missions, times)
 
 if __name__ == "__main__":
