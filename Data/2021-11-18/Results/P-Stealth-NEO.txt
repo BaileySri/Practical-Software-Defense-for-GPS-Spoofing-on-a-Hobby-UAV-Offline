@@ -1,0 +1,108 @@
+---Accelerometer and OF---
+--Tri-Axis Velocity--
+Detected Test: 0/181(0.0%)
+Detected Attack: Spoofing Limit reached on start.
+Detected Test without Invalid: 0/75(0.0%)
+All Attack frames were invalid.
+FPR(Strict): 0.0
+FPR(Permissive): 0.0
+TPR(Strict): N/A
+TPR(Permissive): N/A
+Valid Frames (%): 41.43646408839779
+Streak N/A
+TTD (Strict) N/A
+TTD (Permissive) N/A
+--Net Velocity--
+Detected Test: 0/181(0.0%)
+Detected Attack: Spoofing Limit reached on start.
+Detected Test without Invalid: 0/181(0.0%)
+All Attack frames were invalid.
+FPR(Strict): 0.0
+FPR(Permissive): 0.0
+TPR(Strict): N/A
+TPR(Permissive): N/A
+Valid Frames (%): 100.0
+Streak N/A
+TTD (Strict) N/A
+TTD (Permissive) N/A
+---GPS and Magnetometer---
+-Ground Course-
+Detected Test: 1/90(1.11%)
+Detected Attack: Spoofing Limit reached on start.
+No detected frames in Test Window
+All Attack frames were invalid.
+FPR(Strict): N/A
+FPR(Permissive): 1.1
+TPR(Strict): N/A
+TPR(Permissive): N/A
+Valid Frames (%): 0.0
+Streak N/A
+TTD (Strict) N/A
+TTD (Permissive) N/A
+---Accelerometer and GPS---
+--Tri-Axis Velocity--
+Detected Test: 0/90(0.0%)
+Detected Attack: Spoofing Limit reached on start.
+Detected Test without Invalid: 0/56(0.0%)
+All Attack frames were invalid.
+FPR(Strict): 0.0
+FPR(Permissive): 0.0
+TPR(Strict): N/A
+TPR(Permissive): N/A
+Valid Frames (%): 62.22222222222222
+Streak N/A
+TTD (Strict) N/A
+TTD (Permissive) N/A
+--Net Velocity--
+Detected Test: 1/90(1.11%)
+Detected Attack: Spoofing Limit reached on start.
+Detected Test without Invalid: 1/62(1.61%)
+All Attack frames were invalid.
+FPR(Strict): 1.59
+FPR(Permissive): 1.1
+TPR(Strict): N/A
+TPR(Permissive): N/A
+Valid Frames (%): 68.88888888888889
+Streak N/A
+TTD (Strict) N/A
+TTD (Permissive) N/A
+---GPS and OF---
+--Tri-Axis Velocity--
+Detected Test: 0/90(0.0%)
+Detected Attack: Spoofing Limit reached on start.
+Detected Test without Invalid: 0/90(0.0%)
+All Attack frames were invalid.
+FPR(Strict): 0.0
+FPR(Permissive): 0.0
+TPR(Strict): N/A
+TPR(Permissive): N/A
+Valid Frames (%): 100.0
+Streak N/A
+TTD (Strict) N/A
+TTD (Permissive) N/A
+--Net Velocity--
+Detected Test: 0/90(0.0%)
+Detected Attack: Spoofing Limit reached on start.
+Detected Test without Invalid: 0/90(0.0%)
+All Attack frames were invalid.
+FPR(Strict): 0.0
+FPR(Permissive): 0.0
+TPR(Strict): N/A
+TPR(Permissive): N/A
+Valid Frames (%): 100.0
+Streak N/A
+TTD (Strict) N/A
+TTD (Permissive) N/A
+-Ground Course-
+Detected Test: 0/90(0.0%)
+Detected Attack: Spoofing Limit reached on start.
+Detected Test without Invalid: 0/90(0.0%)
+All Attack frames were invalid.
+FPR(Strict): 0.0
+FPR(Permissive): 0.0
+TPR(Strict): N/A
+TPR(Permissive): N/A
+Valid Frames (%): 100.0
+Streak N/A
+TTD (Strict) N/A
+TTD (Permissive) N/A

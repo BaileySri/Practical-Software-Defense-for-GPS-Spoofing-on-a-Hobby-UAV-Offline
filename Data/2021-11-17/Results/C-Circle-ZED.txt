@@ -1,0 +1,54 @@
+---Accelerometer and OF---
+--Tri-Axis Velocity--
+Detected Overall (FPR): 256/1217(21.04%)
+Detected Overall without Invalid (FPR): 256/1217(21.04%)
+Valid Frames (%): 100.0
+Streak of Windows: 22
+TTD (Permissive) N/A
+--Net Velocity--
+Detected Overall (FPR): 0/1217(0.0%)
+No detected frames in Test Window
+Valid Frames (%): 100.0
+Streak N/A
+TTD (Strict) N/A
+TTD (Permissive) N/A
+---GPS and Magnetometer---
+-Ground Course-
+Detected Overall (FPR): 610/610(100.0%)
+Detected Overall without Invalid (FPR): 128/128(100.0%)
+Valid Frames (%): 20.983606557377048
+Streak of Windows: 32
+TTD (Permissive) N/A
+---Accelerometer and GPS---
+--Tri-Axis Velocity--
+Detected Overall (FPR): 581/610(95.25%)
+Detected Overall without Invalid (FPR): 525/542(96.86%)
+Valid Frames (%): 88.85245901639344
+Streak of Windows: 120
+TTD (Permissive) N/A
+--Net Velocity--
+Detected Overall (FPR): 4/610(0.66%)
+Detected Overall without Invalid (FPR): 4/610(0.66%)
+Valid Frames (%): 100.0
+Streak of Windows: 4
+TTD (Permissive) N/A
+---GPS and OF---
+--Tri-Axis Velocity--
+Detected Overall (FPR): 608/610(99.67%)
+Detected Overall without Invalid (FPR): 608/610(99.67%)
+Valid Frames (%): 100.0
+Streak of Windows: 607
+TTD (Permissive) N/A
+--Net Velocity--
+Detected Overall (FPR): 0/610(0.0%)
+No detected frames in Test Window
+Valid Frames (%): 100.0
+Streak N/A
+TTD (Strict) N/A
+TTD (Permissive) N/A
+-Ground Course-
+Detected Overall (FPR): 607/610(99.51%)
+Detected Overall without Invalid (FPR): 607/610(99.51%)
+Valid Frames (%): 100.0
+Streak of Windows: 607
+TTD (Permissive) N/A

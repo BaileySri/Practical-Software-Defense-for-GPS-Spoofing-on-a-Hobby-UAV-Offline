@@ -124,9 +124,12 @@ def process(date, missions, times):
             results.append("Detected Test: " + 
                            str(frames_detected_test) + "/" + str(frames_test) +
                            "(" + str(round(frames_detected_test * 100/frames_test, 2)) + "%)")
-            results.append("Detected Attack:" + 
-                           str(frames_detected_attack) + "/" + str(frames_attack) +
-                           "(" + str(round(frames_detected_attack * 100/frames_attack, 2)) + "%)")
+            if frames_attack == 0:
+                results.append("Detected Attack: Spoofing Limit reached on start.")
+            else:
+                results.append("Detected Attack:" + 
+                               str(frames_detected_attack) + "/" + str(frames_attack) +
+                               "(" + str(round(frames_detected_attack * 100/frames_attack, 2)) + "%)")
             if frames_test_valid == 0:
                 results.append("No detected frames in Test Window")
             else:
@@ -218,7 +221,7 @@ def process(date, missions, times):
         conf_type = '3-Axis'
         conf_sensors = 'ACCOF'
         threshold = 2
-        for x in range(2, 30):
+        for x in range(2, 31):
             seq = [x for x in range(1,threshold)]
             coverages[conf_type][conf_sensors][threshold] = np.array([0] * (len(CNF)-threshold+1))
             for i in range(len(res.index)):
@@ -306,9 +309,12 @@ def process(date, missions, times):
             results.append("Detected Test: " + 
                            str(frames_detected_test) + "/" + str(frames_test) +
                            "(" + str(round(frames_detected_test * 100/frames_test, 2)) + "%)")
-            results.append("Detected Attack:" + 
-                           str(frames_detected_attack) + "/" + str(frames_attack) +
-                           "(" + str(round(frames_detected_attack * 100/frames_attack, 2)) + "%)")
+            if frames_attack == 0:
+                results.append("Detected Attack: Spoofing Limit reached on start.")
+            else:
+                results.append("Detected Attack:" + 
+                               str(frames_detected_attack) + "/" + str(frames_attack) +
+                               "(" + str(round(frames_detected_attack * 100/frames_attack, 2)) + "%)")
             if frames_test_valid == 0:
                 results.append("No detected frames in Test Window")
             else:
@@ -401,7 +407,7 @@ def process(date, missions, times):
         conf_type = 'Net'
         conf_sensors = 'ACCOF'
         threshold = 2
-        for x in range(2, 30):
+        for x in range(2, 31):
             seq = [x for x in range(1,threshold)]
             coverages[conf_type][conf_sensors][threshold] = np.array([0] * (len(CNF)-threshold+1))
             for i in range(len(res.index)):
@@ -501,9 +507,12 @@ def process(date, missions, times):
             results.append("Detected Test: " + 
                            str(frames_detected_test) + "/" + str(frames_test) +
                            "(" + str(round(frames_detected_test * 100/frames_test, 2)) + "%)")
-            results.append("Detected Attack:" + 
-                           str(frames_detected_attack) + "/" + str(frames_attack) +
-                           "(" + str(round(frames_detected_attack * 100/frames_attack, 2)) + "%)")
+            if frames_attack == 0:
+                results.append("Detected Attack: Spoofing Limit reached on start.")
+            else:
+                results.append("Detected Attack:" + 
+                               str(frames_detected_attack) + "/" + str(frames_attack) +
+                               "(" + str(round(frames_detected_attack * 100/frames_attack, 2)) + "%)")
             if frames_test_valid == 0:
                 results.append("No detected frames in Test Window")
             else:
@@ -597,7 +606,7 @@ def process(date, missions, times):
         conf_type = 'GC'
         conf_sensors = 'GPSMAG'
         threshold = 2
-        for x in range(2, 30):
+        for x in range(2, 31):
             seq = [x for x in range(1,threshold)]
             coverages[conf_type][conf_sensors][threshold] = np.array([0] * (len(CNF)-threshold+1))
             for i in range(len(res.index)):
@@ -688,9 +697,12 @@ def process(date, missions, times):
             results.append("Detected Test: " + 
                            str(frames_detected_test) + "/" + str(frames_test) +
                            "(" + str(round(frames_detected_test * 100/frames_test, 2)) + "%)")
-            results.append("Detected Attack:" + 
-                           str(frames_detected_attack) + "/" + str(frames_attack) +
-                           "(" + str(round(frames_detected_attack * 100/frames_attack, 2)) + "%)")
+            if frames_attack == 0:
+                results.append("Detected Attack: Spoofing Limit reached on start.")
+            else:
+                results.append("Detected Attack:" + 
+                               str(frames_detected_attack) + "/" + str(frames_attack) +
+                               "(" + str(round(frames_detected_attack * 100/frames_attack, 2)) + "%)")
             if frames_test_valid == 0:
                 results.append("No detected frames in Test Window")
             else:
@@ -783,7 +795,7 @@ def process(date, missions, times):
         conf_type = '3-Axis'
         conf_sensors = 'ACCGPS'
         threshold = 2
-        for x in range(2, 30):
+        for x in range(2, 31):
             seq = [x for x in range(1,threshold)]
             coverages[conf_type][conf_sensors][threshold] = np.array([0] * (len(CNF)-threshold+1))
             for i in range(len(res.index)):
@@ -867,9 +879,12 @@ def process(date, missions, times):
             results.append("Detected Test: " + 
                            str(frames_detected_test) + "/" + str(frames_test) +
                            "(" + str(round(frames_detected_test * 100/frames_test, 2)) + "%)")
-            results.append("Detected Attack:" + 
-                           str(frames_detected_attack) + "/" + str(frames_attack) +
-                           "(" + str(round(frames_detected_attack * 100/frames_attack, 2)) + "%)")
+            if frames_attack == 0:
+                results.append("Detected Attack: Spoofing Limit reached on start.")
+            else:
+                results.append("Detected Attack:" + 
+                               str(frames_detected_attack) + "/" + str(frames_attack) +
+                               "(" + str(round(frames_detected_attack * 100/frames_attack, 2)) + "%)")
             if frames_test_valid == 0:
                 results.append("No detected frames in Test Window")
             else:
@@ -962,7 +977,7 @@ def process(date, missions, times):
         conf_type = 'Net'
         conf_sensors = 'ACCGPS'
         threshold = 2
-        for x in range(2, 30):
+        for x in range(2, 31):
             seq = [x for x in range(1,threshold)]
             coverages[conf_type][conf_sensors][threshold] = np.array([0] * (len(CNF)-threshold+1))
             for i in range(len(res.index)):
@@ -1049,9 +1064,12 @@ def process(date, missions, times):
             results.append("Detected Test: " + 
                            str(frames_detected_test) + "/" + str(frames_test) +
                            "(" + str(round(frames_detected_test * 100/frames_test, 2)) + "%)")
-            results.append("Detected Attack:" + 
-                           str(frames_detected_attack) + "/" + str(frames_attack) +
-                           "(" + str(round(frames_detected_attack * 100/frames_attack, 2)) + "%)")
+            if frames_attack == 0:
+                results.append("Detected Attack: Spoofing Limit reached on start.")
+            else:
+                results.append("Detected Attack:" + 
+                               str(frames_detected_attack) + "/" + str(frames_attack) +
+                               "(" + str(round(frames_detected_attack * 100/frames_attack, 2)) + "%)")
             if frames_test_valid == 0:
                 results.append("No detected frames in Test Window")
             else:
@@ -1142,7 +1160,7 @@ def process(date, missions, times):
         conf_type = '3-Axis'
         conf_sensors = 'GPSOF'
         threshold = 2
-        for x in range(2, 30):
+        for x in range(2, 31):
             seq = [x for x in range(1,threshold)]
             coverages[conf_type][conf_sensors][threshold] = np.array([0] * (len(CNF)-threshold+1))
             for i in range(len(res.index)):
@@ -1224,9 +1242,12 @@ def process(date, missions, times):
             results.append("Detected Test: " + 
                            str(frames_detected_test) + "/" + str(frames_test) +
                            "(" + str(round(frames_detected_test * 100/frames_test, 2)) + "%)")
-            results.append("Detected Attack:" + 
-                           str(frames_detected_attack) + "/" + str(frames_attack) +
-                           "(" + str(round(frames_detected_attack * 100/frames_attack, 2)) + "%)")
+            if frames_attack == 0:
+                results.append("Detected Attack: Spoofing Limit reached on start.")
+            else:
+                results.append("Detected Attack:" + 
+                               str(frames_detected_attack) + "/" + str(frames_attack) +
+                               "(" + str(round(frames_detected_attack * 100/frames_attack, 2)) + "%)")
             if frames_test_valid == 0:
                 results.append("No detected frames in Test Window")
             else:
@@ -1317,7 +1338,7 @@ def process(date, missions, times):
         conf_type = 'Net'
         conf_sensors = 'GPSOF'
         threshold = 2
-        for x in range(2, 30):
+        for x in range(2, 31):
             seq = [x for x in range(1,threshold)]
             coverages[conf_type][conf_sensors][threshold] = np.array([0] * (len(CNF)-threshold+1))
             for i in range(len(res.index)):
@@ -1409,9 +1430,12 @@ def process(date, missions, times):
             results.append("Detected Test: " + 
                            str(frames_detected_test) + "/" + str(frames_test) +
                            "(" + str(round(frames_detected_test * 100/frames_test, 2)) + "%)")
-            results.append("Detected Attack:" + 
-                           str(frames_detected_attack) + "/" + str(frames_attack) +
-                           "(" + str(round(frames_detected_attack * 100/frames_attack, 2)) + "%)")
+            if frames_attack == 0:
+                results.append("Detected Attack: Spoofing Limit reached on start.")
+            else:
+                results.append("Detected Attack:" + 
+                               str(frames_detected_attack) + "/" + str(frames_attack) +
+                               "(" + str(round(frames_detected_attack * 100/frames_attack, 2)) + "%)")
             if frames_test_valid == 0:
                 results.append("No detected frames in Test Window")
             else:
@@ -1504,7 +1528,7 @@ def process(date, missions, times):
         conf_type = 'GC'
         conf_sensors = 'GPSOF'
         threshold = 2
-        for x in range(2, 30):
+        for x in range(2, 31):
             seq = [x for x in range(1,threshold)]
             coverages[conf_type][conf_sensors][threshold] = np.array([0] * (len(CNF)-threshold+1))
             for i in range(len(res.index)):
@@ -1593,37 +1617,35 @@ def process(date, missions, times):
             suffixes = ['Net','3-Axis','GC']
             outFiles = [pairwiseData + '-' + suffix + '.csv' for suffix in suffixes]
             for i in range(3):
-                ACCOF = np.array([])
-                GPSOF = np.array([])
-                ACCGPS = np.array([])
-                if i == 1:
-                    print("hi")
+                FPR_ACCOF = np.array([])
+                FPR_GPSOF = np.array([])
+                FPR_ACCGPS = np.array([])
                 for key, value in coverages[suffixes[i]].items():
                     for key2, value2 in value.items():
-                        if key == 'ACCOF':
-                            ACCOF = np.append(ACCOF, np.count_nonzero(value2)/len(value2))
-                        elif key == 'GPSOF':
-                            GPSOF = np.append(GPSOF, np.count_nonzero(value2)/len(value2))
-                        elif key == 'ACCGPS':
-                            ACCGPS = np.append(ACCGPS, np.count_nonzero(value2)/len(value2))
+                        if key == 'FPR_ACCOF':
+                            FPR_ACCOF = np.append(FPR_ACCOF, np.count_nonzero(value2)/len(value2))
+                        elif key == 'FPR_GPSOF':
+                            FPR_GPSOF = np.append(FPR_GPSOF, np.count_nonzero(value2)/len(value2))
+                        elif key == 'FPR_ACCGPS':
+                            FPR_ACCGPS = np.append(FPR_ACCGPS, np.count_nonzero(value2)/len(value2))
                 # Match array lengths then output the csv
-                if len(ACCOF) > len(GPSOF):
-                    GPSOF = np.pad(GPSOF, (0,len(ACCOF) - len(GPSOF)),'constant')
-                elif len(GPSOF) > len(ACCOF):
-                    ACCOF = np.pad(ACCOF, (0,len(GPSOF) - len(ACCOF)),'constant')
-                if len(ACCOF) > len(ACCGPS):
-                    ACCGPS = np.pad(ACCGPS, (0,len(ACCOF) - len(ACCGPS)),'constant')
-                elif len(ACCGPS) > len(ACCOF):
-                    ACCOF = np.pad(ACCOF, (0,len(ACCGPS) - len(ACCOF)),'constant')
-                if len(GPSOF) > len(ACCGPS):
-                    ACCGPS = np.pad(ACCGPS, (0,len(GPSOF) - len(ACCGPS)),'constant')
-                elif len(ACCGPS) > len(GPSOF):
-                    GPSOF = np.pad(GPSOF, (0,len(ACCGPS) - len(GPSOF)),'constant')
-                FPR = pd.DataFrame(data={'Threshold': range(1,len(ACCOF)+1),
-                                       'ACCOF':ACCOF,
-                                       'GPSOF':GPSOF,
-                                       'ACCGPS':ACCGPS})
-                FPR.to_csv(outFiles[i], index=False)        
+                max_len = max(len(FPR_GPSOF),len(FPR_ACCOF),len(FPR_ACCGPS))
+                FPR_GPSOF = np.pad(FPR_GPSOF, (0, max_len - len(FPR_GPSOF)), 'constant')
+                FPR_ACCOF = np.pad(FPR_ACCOF, (0, max_len - len(FPR_ACCOF)), 'constant')
+                FPR_ACCGPS = np.pad(FPR_ACCGPS, (0, max_len - len(FPR_ACCGPS)), 'constant')
+                # For ease of merging in Excel I'm using FPR and TPR format
+                # for both attack and benign missions. Just using a bunch
+                # of -1's for the benign set
+                dummy_TPR = np.array([-1]*max_len)
+                
+                outCsv = pd.DataFrame(data={'Threshold': range(1,max_len+1),
+                                       'ACCOF(FPR)':FPR_ACCOF,
+                                       'ACCOF(TPR)':dummy_TPR,
+                                       'GPSOF(FPR)':FPR_GPSOF,
+                                       'GPSOF(TPR)':dummy_TPR,
+                                       'ACCGPS(FPR)':FPR_ACCGPS,
+                                       'ACCGPS(TPR)':dummy_TPR})
+                outCsv.to_csv(outFiles[i], index=False)          
 
         elif len(timing) == 3:
             net = []
@@ -1687,50 +1709,114 @@ def process(date, missions, times):
                             FP += 1
                         else:
                             TN += 1
-                FPR = np.append(FPR, FP/(FP+TN))
-                TPR = np.append(TPR, TP/(TP+FN))
+                if FP + TN == 0:
+                    FPR = np.append(FPR, -1)
+                else:
+                    FPR = np.append(FPR, FP/(FP+TN))
+                if TP + FN == 0:
+                    # I have only seen this occur when the stealthy attack has no room
+                    TPR = np.append(TPR, -1)
+                else:
+                    TPR = np.append(TPR, TP/(TP+FN))
                 
             pd.DataFrame(data={'THR':list(range(1,len(gc)+1)),
                                'Frames':np.flip(np.array(list(range(len(CNF)-len(gc)+1,len(CNF)+1)))),
                                'FPR': FPR,
                                'TPR': TPR,
-                               'TTD': TTD}).to_csv(graphData,index=False) 
+                               'TTD': TTD}).to_csv(graphData,index=False)
+            
+            # Output pairwise FPR and TPR Data
+            # Net, 3-Axis, and GC
+            suffixes = ['Net','3-Axis','GC']
+            outFiles = [pairwiseData + '-' + suffix + '.csv' for suffix in suffixes]
+            frames_benign = frames_test - frames_attack
+            for i in range(3):
+                FPR_ACCOF = np.array([])
+                FPR_GPSOF = np.array([])
+                FPR_ACCGPS = np.array([])
+                TPR_ACCOF = np.array([])
+                TPR_GPSOF = np.array([])
+                TPR_ACCGPS = np.array([])
+                for key, value in coverages[suffixes[i]].items():
+                    for key2, value2 in value.items():
+                        frames_attack = len(value2) - frames_benign
+                        #FPR
+                        FPR = np.where((value2 >= timing[0]) & (value2 <= timing[1]), 1, 0).sum()
+                        #TPR
+                        TPR = np.where((value2 >= timing[1]) & (value2 <= timing[2]), 1, 0).sum()
+                        if(frames_attack == 0):
+                            frames_attack = 1
+                            TPR = -1
+                        if key == 'ACCOF':
+                            FPR_ACCOF = np.append(FPR_ACCOF, FPR/frames_benign)
+                            TPR_ACCOF = np.append(TPR_ACCOF, TPR/frames_attack)
+                        elif key == 'GPSOF':
+                            FPR_GPSOF = np.append(FPR_GPSOF, FPR/frames_benign)
+                            TPR_GPSOF = np.append(TPR_GPSOF, TPR/frames_attack)
+                        elif key == 'ACCGPS':
+                            FPR_ACCGPS = np.append(FPR_ACCGPS, FPR/frames_benign)
+                            TPR_ACCGPS = np.append(TPR_ACCGPS, TPR/frames_attack)
+                # Match array lengths then output the csv
+                max_len = max(len(FPR_ACCOF),len(TPR_ACCOF),
+                              len(FPR_GPSOF),len(TPR_GPSOF),
+                              len(FPR_ACCGPS),len(TPR_ACCGPS))
+                FPR_ACCOF = np.pad(FPR_ACCOF, (0, max_len - len(FPR_ACCOF)), 'constant')
+                TPR_ACCOF = np.pad(TPR_ACCOF, (0, max_len - len(TPR_ACCOF)), 'constant')
+                FPR_ACCGPS = np.pad(FPR_ACCGPS, (0, max_len - len(FPR_ACCGPS)), 'constant')
+                TPR_ACCGPS = np.pad(TPR_ACCGPS, (0, max_len - len(TPR_ACCGPS)), 'constant')
+                FPR_GPSOF = np.pad(FPR_GPSOF, (0, max_len - len(FPR_GPSOF)), 'constant')
+                TPR_GPSOF = np.pad(TPR_GPSOF, (0, max_len - len(TPR_GPSOF)), 'constant')
+
+                outCsv = pd.DataFrame(data={'Threshold': range(1,max_len+1),
+                                       'ACCOF(FPR)':FPR_ACCOF,
+                                       'ACCOF(TPR)':TPR_ACCOF,
+                                       'GPSOF(FPR)':FPR_GPSOF,
+                                       'GPSOF(TPR)':TPR_GPSOF,
+                                       'ACCGPS(FPR)':FPR_ACCGPS,
+                                       'ACCGPS(TPR)':TPR_ACCGPS})
+                outCsv.to_csv(outFiles[i], index=False)        
 
 def main():
-    date = "2021-11-03"
-    missions = ["C-Motion-NEO-1cm.txt","C-Motion-NEO-250cm.txt",
-                "C-Motion-ZED-1cm.txt","C-Motion-ZED-250cm.txt",
-                "C-Idle-NEO-1cm.txt","C-Idle-NEO-250cm.txt",
-                "C-Idle-ZED-1cm.txt","C-Idle-ZED-250cm.txt",
-                "C-Stealth-NEO.txt","C-Stealth-ZED.txt",
-                "C-Circle-NEO.txt","C-Circle-ZED.txt",
-                "C-Square-NEO.txt","C-Square-ZED.txt",
-                "C-Wave-NEO.txt","C-Wave-ZED.txt",
+    date = "2021-11-18"
+    missions = [
+                # "C-Motion-NEO-1cm.txt","C-Motion-NEO-250cm.txt",
+                # "C-Motion-ZED-1cm.txt","C-Motion-ZED-250cm.txt",
+                # "C-Idle-NEO-1cm.txt","C-Idle-NEO-250cm.txt",
+                # "C-Idle-ZED-1cm.txt","C-Idle-ZED-250cm.txt",
+                # "C-Stealth-NEO.txt","C-Stealth-ZED.txt",
+                # "C-Circle-NEO.txt","C-Circle-ZED.txt",
+                # "C-Square-NEO.txt","C-Square-ZED.txt",
+                # "C-Wave-NEO.txt","C-Wave-ZED.txt",
                 "P-Motion-NEO-1cm.txt","P-Motion-NEO-250cm.txt",
                 "P-Motion-ZED-1cm.txt","P-Motion-ZED-250cm.txt",
+                "P-Stealth-ZED.txt", "P-Stealth-NEO.txt",
                 "P-Circle-NEO.txt","P-Circle-ZED.txt",
-                "P-Square-NEO.txt","P-Square-ZED.txt",
-                "P-Wave-NEO.txt","P-Wave-ZED.txt"]
-    # Attack formatted as [Auto Mode, Enabled Attack, Disabled Attack]
-    # Idle formatted as [Altitude Reached, Enabled Attack, Disabled Attack]
-    # Square,Circle,Wave formatted as [Auto Mode, RTL]
-    # Stealth formatted as [Altitude Reached, Enabled Attacked, RTL]
-    times = [[149028698,170660875,231280784], [149026199,170660875,231278285],
-             [149028698,169861195,230481104], [149028698,169866193,230458613],
-             [149258606,157078810,217678727], [149256107,157086307,217681226],
-             [149256107,157058818,217676228], [149256107,157066315,217668731],
-             [149256107,157286227,173663840], [149256107,157266235,219029020],
-             [151028731,273029078], [151028731,273029078],
-             [149028698,256028381], [149028698,256030880],
-             [149028698,230028785], [149028698,230028785],
-             [140060620,168280161,228580198], [140060620,168280161,228580198],
-             [140060620,168080241,228380278], [140060620,168080241,228380278],
-             [181400744,381560648], [181400744,381560648],
-             [148200696,281920520], [148200696,281820560],
-             [149800889,236620314], [149700929,236620314]]
-    date = "2021-11-14"
-    missions = ["C-Square-ZED.txt"]
-    times = [[51026248,158033428]]
+                "P-Square-NEO.txt",
+                "P-Square-ZED.txt",
+                "P-Wave-NEO.txt","P-Wave-ZED.txt"
+                ]
+    # Motion formatted as [Mission: 2 WP, Enabled Attack, Disabled Attack]
+    # Idle formatted as [Mode Guided, Enabled Attack, Disabled Attack]
+    # Square and Wave formatted as  [Mission: 2 WP, RTL]
+    # Copter Circle formatted as [Mode Circle, Mode RTL]
+    # Plane Circle formatted as [Sim Delay, Disarm]
+    # Stealth formatted as [Altitude Reached, Enabled Attacked, Disabled Attack/Attack Limit]
+    times = [
+               # [58405795,71458905,132086311], [58405795,71458905,132086311],
+               # [58405795,71458905,132086311], [58405795,71458905,132086311],
+               # [52030846,73081589,133883925], [52030846,73081589,133883925],
+               # [52030846,73081589,133883925], [52030846,73081589,133883925],
+               # [52030846,58080925,118658351], [52030846,58080925,90203904],
+               # [52030846,174028694], [52030846,174028694],
+               # [66836588,157028830], [66836588,157028830],
+               # [61403762,131025902], [61403762,131025902],
+               [28300342,47280247,107580284], [28300342,47280247,107580284],
+               [28300342,47280247,107580284], [28300342,47280247,107580284],
+               [29800575,48180720,48200712],[30100455,48180720,48200712],
+               [21560539,261560334], [21560539,261560334],
+               [28300342,162200927], [28300342,162200927],
+               [33800641,120120266], [33800641,120120266]
+            ]
     process(date, missions, times)
 
 if __name__ == "__main__":
