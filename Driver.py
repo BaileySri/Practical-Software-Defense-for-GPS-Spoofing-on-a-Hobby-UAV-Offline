@@ -17,22 +17,33 @@ def process(date, missions, times):
     base = "./Data/" + date
     try:
         mkdir(base + "/Results/")
+        mkdir(base + "/Results/Attack/")
+        mkdir(base + "/Results/Benign/")
     except:
         print("Results directory already exists.")
     try:
-        mkdir(base + "/Results/GraphData/")
+        mkdir(base + "/Results/Attack/GraphData/")
+        mkdir(base + "/Results/Benign/GraphData/")
     except:
         print("GraphData directory already exists.")
     try:
-        mkdir(base + "/Results/PairwiseData/")
+        mkdir(base + "/Results/Attack/PairwiseData/")
+        mkdir(base + "/Results/Benign/PairwiseData/")
     except:
         print("PairwiseData directory already exists.")
+
+    test_thresholds = 30
     tests = zip(missions, times)
     for name, timing in tests:
+        if(len(timing) == 3):
+            dir_type = "Attack/"
+        else:
+            dir_type = "Benign/"
+
         results = []
-        outfile = base + "/Results/" + name
-        graphData = base + "/Results/GraphData/" + name[:-3] + "csv"
-        pairwiseData = base + "/Results/PairwiseData/" + name[:-4]
+        outfile = base + "/Results/" + dir_type + name
+        graphData = base + "/Results/" + dir_type + "GraphData/" + name[:-3] + "csv"
+        pairwiseData = base + "/Results/" + dir_type + "PairwiseData/" + name[:-4]
         files = []
         first_detected_attack = 0
         for i in range(1,4):
@@ -221,7 +232,7 @@ def process(date, missions, times):
         conf_type = '3-Axis'
         conf_sensors = 'ACCOF'
         threshold = 2
-        for x in range(2, 31):
+        for x in range(2, test_thresholds+1):
             seq = [x for x in range(1,threshold)]
             coverages[conf_type][conf_sensors][threshold] = np.array([0] * (len(CNF)-threshold+1))
             for i in range(len(res.index)):
@@ -407,7 +418,7 @@ def process(date, missions, times):
         conf_type = 'Net'
         conf_sensors = 'ACCOF'
         threshold = 2
-        for x in range(2, 31):
+        for x in range(2, test_thresholds+1):
             seq = [x for x in range(1,threshold)]
             coverages[conf_type][conf_sensors][threshold] = np.array([0] * (len(CNF)-threshold+1))
             for i in range(len(res.index)):
@@ -606,7 +617,7 @@ def process(date, missions, times):
         conf_type = 'GC'
         conf_sensors = 'GPSMAG'
         threshold = 2
-        for x in range(2, 31):
+        for x in range(2, test_thresholds+1):
             seq = [x for x in range(1,threshold)]
             coverages[conf_type][conf_sensors][threshold] = np.array([0] * (len(CNF)-threshold+1))
             for i in range(len(res.index)):
@@ -795,7 +806,7 @@ def process(date, missions, times):
         conf_type = '3-Axis'
         conf_sensors = 'ACCGPS'
         threshold = 2
-        for x in range(2, 31):
+        for x in range(2, test_thresholds+1):
             seq = [x for x in range(1,threshold)]
             coverages[conf_type][conf_sensors][threshold] = np.array([0] * (len(CNF)-threshold+1))
             for i in range(len(res.index)):
@@ -977,7 +988,7 @@ def process(date, missions, times):
         conf_type = 'Net'
         conf_sensors = 'ACCGPS'
         threshold = 2
-        for x in range(2, 31):
+        for x in range(2, test_thresholds+1):
             seq = [x for x in range(1,threshold)]
             coverages[conf_type][conf_sensors][threshold] = np.array([0] * (len(CNF)-threshold+1))
             for i in range(len(res.index)):
@@ -1160,7 +1171,7 @@ def process(date, missions, times):
         conf_type = '3-Axis'
         conf_sensors = 'GPSOF'
         threshold = 2
-        for x in range(2, 31):
+        for x in range(2, test_thresholds+1):
             seq = [x for x in range(1,threshold)]
             coverages[conf_type][conf_sensors][threshold] = np.array([0] * (len(CNF)-threshold+1))
             for i in range(len(res.index)):
@@ -1338,7 +1349,7 @@ def process(date, missions, times):
         conf_type = 'Net'
         conf_sensors = 'GPSOF'
         threshold = 2
-        for x in range(2, 31):
+        for x in range(2, test_thresholds+1):
             seq = [x for x in range(1,threshold)]
             coverages[conf_type][conf_sensors][threshold] = np.array([0] * (len(CNF)-threshold+1))
             for i in range(len(res.index)):
@@ -1528,7 +1539,7 @@ def process(date, missions, times):
         conf_type = 'GC'
         conf_sensors = 'GPSOF'
         threshold = 2
-        for x in range(2, 31):
+        for x in range(2, test_thresholds+1):
             seq = [x for x in range(1,threshold)]
             coverages[conf_type][conf_sensors][threshold] = np.array([0] * (len(CNF)-threshold+1))
             for i in range(len(res.index)):
@@ -1578,6 +1589,12 @@ def process(date, missions, times):
             for i in range(1,longest+1):
                 inter = np.array([0] * (len(CNF)-i+1))
                 for key, value in coverages['Net'].items():
+                    if(name.startswith("C-")):
+                        if(key == "GPSOF"): #Copter does not use GPSOF in Net
+                            continue
+                    elif(name.startswith("P-")):
+                        if(key == "ACCGPS"): #Plane does not use ACCGPS in Net
+                            continue
                     if len(value) < i:
                         continue
                     inter = np.where(inter ==0, value[i], inter)
@@ -1587,25 +1604,16 @@ def process(date, missions, times):
             longest = max(len(item) for item in coverages['GC'].values())
             for i in range(1,longest+1):
                 inter = np.array([0] * (len(CNF)-i+1))
-                for key, value in coverages['GC'].items():
+                for key, value in coverages['GC'].items(): #Use both GPSMAG and GPSOF
                     if len(value) < i:
                         continue
                     inter = np.where(inter ==0, value[i], inter)
                 gc = np.append(gc, np.count_nonzero(inter)/len(inter))
                 
             # Match array lengths then output the csv
-            if len(net) > len(triaxis):
-                triaxis = np.pad(triaxis, (0,len(net) - len(triaxis)),'constant')
-            elif len(triaxis) > len(net):
-                net = np.pad(net, (0,len(triaxis) - len(net)),'constant')
-            if len(net) > len(gc):
-                gc = np.pad(gc, (0,len(net) - len(gc)),'constant')
-            elif len(gc) > len(net):
-                net = np.pad(net, (0,len(gc) - len(net)),'constant')
-            if len(triaxis) > len(gc):
-                gc = np.pad(gc, (0,len(triaxis) - len(gc)),'constant')
-            elif len(gc) > len(triaxis):
-                triaxis = np.pad(triaxis, (0,len(gc) - len(triaxis)),'constant')
+            gc = np.pad(gc, (0, test_thresholds - len(gc)), 'constant')
+            net = np.pad(net, (0, test_thresholds - len(net)), 'constant')
+            triaxis = np.pad(triaxis, (0, test_thresholds - len(triaxis)), 'constant')
             pd.DataFrame(data={'THR':list(range(1,len(net)+1)),
                                'Frames':np.flip(np.array(list(range(len(CNF)-len(gc)+1,len(CNF)+1)))),
                                'Tri-Axis FPR':triaxis,
@@ -1617,36 +1625,42 @@ def process(date, missions, times):
             suffixes = ['Net','3-Axis','GC']
             outFiles = [pairwiseData + '-' + suffix + '.csv' for suffix in suffixes]
             for i in range(3):
-                FPR_ACCOF = np.array([])
-                FPR_GPSOF = np.array([])
-                FPR_ACCGPS = np.array([])
+                ACCOF = np.array([], dtype=float)
+                GPSOF = np.array([], dtype=float)
+                ACCGPS = np.array([], dtype=float)
+                GPSMAG = np.array([], dtype=float)
                 for key, value in coverages[suffixes[i]].items():
                     for key2, value2 in value.items():
-                        if key == 'FPR_ACCOF':
-                            FPR_ACCOF = np.append(FPR_ACCOF, np.count_nonzero(value2)/len(value2))
-                        elif key == 'FPR_GPSOF':
-                            FPR_GPSOF = np.append(FPR_GPSOF, np.count_nonzero(value2)/len(value2))
-                        elif key == 'FPR_ACCGPS':
-                            FPR_ACCGPS = np.append(FPR_ACCGPS, np.count_nonzero(value2)/len(value2))
+                        if suffixes[i] != "GC":
+                            if key == 'ACCOF':
+                                ACCOF = np.append(ACCOF, np.count_nonzero(value2)/len(value2))
+                            elif key == 'GPSOF':
+                                GPSOF = np.append(GPSOF, np.count_nonzero(value2)/len(value2))
+                            elif key == 'ACCGPS':
+                                ACCGPS = np.append(ACCGPS, np.count_nonzero(value2)/len(value2))
+                        else:
+                            if key == 'GPSMAG':
+                                GPSMAG = np.append(GPSMAG, np.count_nonzero(value2)/len(value2))
+                            elif key == 'GPSOF':
+                                GPSOF = np.append(GPSOF, np.count_nonzero(value2)/len(value2))
+                            
                 # Match array lengths then output the csv
-                max_len = max(len(FPR_GPSOF),len(FPR_ACCOF),len(FPR_ACCGPS))
-                FPR_GPSOF = np.pad(FPR_GPSOF, (0, max_len - len(FPR_GPSOF)), 'constant')
-                FPR_ACCOF = np.pad(FPR_ACCOF, (0, max_len - len(FPR_ACCOF)), 'constant')
-                FPR_ACCGPS = np.pad(FPR_ACCGPS, (0, max_len - len(FPR_ACCGPS)), 'constant')
-                # For ease of merging in Excel I'm using FPR and TPR format
-                # for both attack and benign missions. Just using a bunch
-                # of -1's for the benign set
-                dummy_TPR = np.array([-1]*max_len)
+                GPSOF = np.pad(GPSOF, (0, test_thresholds - len(GPSOF)), 'constant')
+                ACCOF = np.pad(ACCOF, (0, test_thresholds - len(ACCOF)), 'constant')
+                ACCGPS = np.pad(ACCGPS, (0, test_thresholds - len(ACCGPS)), 'constant')
+                GPSMAG = np.pad(GPSMAG, (0, test_thresholds - len(GPSMAG)), 'constant')
                 
-                outCsv = pd.DataFrame(data={'Threshold': range(1,max_len+1),
-                                       'ACCOF(FPR)':FPR_ACCOF,
-                                       'ACCOF(TPR)':dummy_TPR,
-                                       'GPSOF(FPR)':FPR_GPSOF,
-                                       'GPSOF(TPR)':dummy_TPR,
-                                       'ACCGPS(FPR)':FPR_ACCGPS,
-                                       'ACCGPS(TPR)':dummy_TPR})
+                if suffixes[i] != "GC":
+                    outCsv = pd.DataFrame(data={'Threshold': range(1,test_thresholds+1),
+                                           'ACCOF(FPR)':ACCOF,
+                                           'GPSOF(FPR)':GPSOF,
+                                           'ACCGPS(FPR)':ACCGPS})
+                else:
+                    outCsv = pd.DataFrame(data={'Threshold': range(1,test_thresholds+1),
+                                           'GPSOF(FPR)':GPSOF,
+                                           'GPSMAG(FPR)':GPSMAG})
                 outCsv.to_csv(outFiles[i], index=False)          
-
+            
         elif len(timing) == 3:
             net = []
             gc = []
@@ -1657,6 +1671,12 @@ def process(date, missions, times):
             for i in range(1,longest+1):
                 inter = np.array([0] * (len(CNF)-i+1))
                 for key, value in coverages['Net'].items():
+                    if(name.startswith("C-")):
+                        if(key == "GPSOF"): #Copter does not use GPSOF in Net
+                            continue
+                    elif(name.startswith("P-")):
+                        if(key == "ACCGPS"): #Plane does not use ACCGPS in Net
+                            continue 
                     if len(value) < i:
                         continue
                     inter = np.where(inter ==0, value[i], inter)
@@ -1681,13 +1701,14 @@ def process(date, missions, times):
                     net.append(np.array([0]*len(gc[i])))
             gc = np.array(gc,dtype=object)
             net = np.array(net,dtype=object)
+            
             # Storing combined results in GC array
             for i in range(len(gc)):
                 gc[i] = np.where(gc[i] == 0, net[i], gc[i])
                 
-            # Calculate FPR and TPR
-            FPR = np.array([])
-            TPR = np.array([])
+            # Calculate system-wise FPR and TPR
+            FPR = np.array([], dtype=float)
+            TPR = np.array([], dtype=float)
             TTD = np.array([0] * len(gc))
             for i in range(len(gc)): # Number of thresholds
                 FP = 0
@@ -1731,12 +1752,14 @@ def process(date, missions, times):
             outFiles = [pairwiseData + '-' + suffix + '.csv' for suffix in suffixes]
             frames_benign = frames_test - frames_attack
             for i in range(3):
-                FPR_ACCOF = np.array([])
-                FPR_GPSOF = np.array([])
-                FPR_ACCGPS = np.array([])
-                TPR_ACCOF = np.array([])
-                TPR_GPSOF = np.array([])
-                TPR_ACCGPS = np.array([])
+                FPR_ACCOF = np.array([], dtype=float)
+                FPR_GPSOF = np.array([], dtype=float)
+                FPR_ACCGPS = np.array([], dtype=float)
+                FPR_GPSMAG = np.array([], dtype=float)
+                TPR_ACCOF = np.array([], dtype=float)
+                TPR_GPSOF = np.array([], dtype=float)
+                TPR_ACCGPS = np.array([], dtype=float)
+                TPR_GPSMAG = np.array([], dtype=float)
                 for key, value in coverages[suffixes[i]].items():
                     for key2, value2 in value.items():
                         frames_attack = len(value2) - frames_benign
@@ -1747,53 +1770,68 @@ def process(date, missions, times):
                         if(frames_attack == 0):
                             frames_attack = 1
                             TPR = -1
-                        if key == 'ACCOF':
-                            FPR_ACCOF = np.append(FPR_ACCOF, FPR/frames_benign)
-                            TPR_ACCOF = np.append(TPR_ACCOF, TPR/frames_attack)
-                        elif key == 'GPSOF':
-                            FPR_GPSOF = np.append(FPR_GPSOF, FPR/frames_benign)
-                            TPR_GPSOF = np.append(TPR_GPSOF, TPR/frames_attack)
-                        elif key == 'ACCGPS':
-                            FPR_ACCGPS = np.append(FPR_ACCGPS, FPR/frames_benign)
-                            TPR_ACCGPS = np.append(TPR_ACCGPS, TPR/frames_attack)
+                        if(suffixes[i] != "GC"):
+                            if key == 'ACCOF':
+                                FPR_ACCOF = np.append(FPR_ACCOF, FPR/frames_benign)
+                                TPR_ACCOF = np.append(TPR_ACCOF, TPR/frames_attack)
+                            elif key == 'GPSOF':
+                                FPR_GPSOF = np.append(FPR_GPSOF, FPR/frames_benign)
+                                TPR_GPSOF = np.append(TPR_GPSOF, TPR/frames_attack)
+                            elif key == 'ACCGPS':
+                                FPR_ACCGPS = np.append(FPR_ACCGPS, FPR/frames_benign)
+                                TPR_ACCGPS = np.append(TPR_ACCGPS, TPR/frames_attack)
+                        else:
+                            if key == 'GPSMAG':
+                                FPR_GPSMAG = np.append(FPR_GPSMAG, FPR/frames_benign)
+                                TPR_GPSMAG = np.append(TPR_GPSMAG, TPR/frames_attack)
+                            elif key == 'GPSOF':
+                                FPR_GPSOF = np.append(FPR_GPSOF, FPR/frames_benign)
+                                TPR_GPSOF = np.append(TPR_GPSOF, TPR/frames_attack)
                 # Match array lengths then output the csv
-                max_len = max(len(FPR_ACCOF),len(TPR_ACCOF),
-                              len(FPR_GPSOF),len(TPR_GPSOF),
-                              len(FPR_ACCGPS),len(TPR_ACCGPS))
-                FPR_ACCOF = np.pad(FPR_ACCOF, (0, max_len - len(FPR_ACCOF)), 'constant')
-                TPR_ACCOF = np.pad(TPR_ACCOF, (0, max_len - len(TPR_ACCOF)), 'constant')
-                FPR_ACCGPS = np.pad(FPR_ACCGPS, (0, max_len - len(FPR_ACCGPS)), 'constant')
-                TPR_ACCGPS = np.pad(TPR_ACCGPS, (0, max_len - len(TPR_ACCGPS)), 'constant')
-                FPR_GPSOF = np.pad(FPR_GPSOF, (0, max_len - len(FPR_GPSOF)), 'constant')
-                TPR_GPSOF = np.pad(TPR_GPSOF, (0, max_len - len(TPR_GPSOF)), 'constant')
+                FPR_ACCOF = np.pad(FPR_ACCOF, (0, test_thresholds - len(FPR_ACCOF)), 'constant')
+                TPR_ACCOF = np.pad(TPR_ACCOF, (0, test_thresholds - len(TPR_ACCOF)), 'constant')
+                FPR_ACCGPS = np.pad(FPR_ACCGPS, (0, test_thresholds - len(FPR_ACCGPS)), 'constant')
+                TPR_ACCGPS = np.pad(TPR_ACCGPS, (0, test_thresholds - len(TPR_ACCGPS)), 'constant')
+                FPR_GPSOF = np.pad(FPR_GPSOF, (0, test_thresholds - len(FPR_GPSOF)), 'constant')
+                TPR_GPSOF = np.pad(TPR_GPSOF, (0, test_thresholds - len(TPR_GPSOF)), 'constant')
+                FPR_GPSMAG = np.pad(FPR_GPSMAG, (0, test_thresholds - len(FPR_GPSMAG)), 'constant')
+                TPR_GPSMAG = np.pad(TPR_GPSMAG, (0, test_thresholds - len(TPR_GPSMAG)), 'constant')
 
-                outCsv = pd.DataFrame(data={'Threshold': range(1,max_len+1),
-                                       'ACCOF(FPR)':FPR_ACCOF,
-                                       'ACCOF(TPR)':TPR_ACCOF,
-                                       'GPSOF(FPR)':FPR_GPSOF,
-                                       'GPSOF(TPR)':TPR_GPSOF,
-                                       'ACCGPS(FPR)':FPR_ACCGPS,
-                                       'ACCGPS(TPR)':TPR_ACCGPS})
+                if suffixes[i] != "GC":
+                    outCsv = pd.DataFrame(data={'Threshold': range(1,test_thresholds+1),
+                                           'ACCOF(FPR)':FPR_ACCOF,
+                                           'ACCOF(TPR)':TPR_ACCOF,
+                                           'GPSOF(FPR)':FPR_GPSOF,
+                                           'GPSOF(TPR)':TPR_GPSOF,
+                                           'ACCGPS(FPR)':FPR_ACCGPS,
+                                           'ACCGPS(TPR)':TPR_ACCGPS})
+                else:
+                    outCsv = pd.DataFrame(data={'Threshold': range(1,test_thresholds+1),
+                                           'GPSOF(FPR)':FPR_GPSOF,
+                                           'GPSOF(TPR)':TPR_GPSOF,
+                                           'GPSMAG(FPR)':FPR_GPSMAG,
+                                           'GPSMAG(TPR)':TPR_GPSMAG})
+                
                 outCsv.to_csv(outFiles[i], index=False)        
 
 def main():
-    date = "2021-11-18"
+    date = "2021-11-17"
     missions = [
-                # "C-Motion-NEO-1cm.txt","C-Motion-NEO-250cm.txt",
+                # "C-Motion-NEO-1cm.txt",
+                "C-Motion-NEO-250cm.txt"
                 # "C-Motion-ZED-1cm.txt","C-Motion-ZED-250cm.txt",
                 # "C-Idle-NEO-1cm.txt","C-Idle-NEO-250cm.txt",
                 # "C-Idle-ZED-1cm.txt","C-Idle-ZED-250cm.txt",
                 # "C-Stealth-NEO.txt","C-Stealth-ZED.txt",
                 # "C-Circle-NEO.txt","C-Circle-ZED.txt",
                 # "C-Square-NEO.txt","C-Square-ZED.txt",
-                # "C-Wave-NEO.txt","C-Wave-ZED.txt",
-                "P-Motion-NEO-1cm.txt","P-Motion-NEO-250cm.txt",
-                "P-Motion-ZED-1cm.txt","P-Motion-ZED-250cm.txt",
-                "P-Stealth-ZED.txt", "P-Stealth-NEO.txt",
-                "P-Circle-NEO.txt","P-Circle-ZED.txt",
-                "P-Square-NEO.txt",
-                "P-Square-ZED.txt",
-                "P-Wave-NEO.txt","P-Wave-ZED.txt"
+                # "C-Wave-NEO.txt","C-Wave-ZED.txt"
+                # "P-Motion-NEO-1cm.txt","P-Motion-NEO-250cm.txt",
+                # "P-Motion-ZED-1cm.txt","P-Motion-ZED-250cm.txt",
+                # "P-Stealth-ZED.txt", "P-Stealth-NEO.txt",
+                # "P-Circle-NEO.txt","P-Circle-ZED.txt",
+                # "P-Square-NEO.txt","P-Square-ZED.txt",
+                # "P-Wave-NEO.txt","P-Wave-ZED.txt"
                 ]
     # Motion formatted as [Mission: 2 WP, Enabled Attack, Disabled Attack]
     # Idle formatted as [Mode Guided, Enabled Attack, Disabled Attack]
@@ -1802,20 +1840,21 @@ def main():
     # Plane Circle formatted as [Sim Delay, Disarm]
     # Stealth formatted as [Altitude Reached, Enabled Attacked, Disabled Attack/Attack Limit]
     times = [
-               # [58405795,71458905,132086311], [58405795,71458905,132086311],
-               # [58405795,71458905,132086311], [58405795,71458905,132086311],
-               # [52030846,73081589,133883925], [52030846,73081589,133883925],
-               # [52030846,73081589,133883925], [52030846,73081589,133883925],
-               # [52030846,58080925,118658351], [52030846,58080925,90203904],
-               # [52030846,174028694], [52030846,174028694],
-               # [66836588,157028830], [66836588,157028830],
-               # [61403762,131025902], [61403762,131025902],
-               [28300342,47280247,107580284], [28300342,47280247,107580284],
-               [28300342,47280247,107580284], [28300342,47280247,107580284],
-               [29800575,48180720,48200712],[30100455,48180720,48200712],
-               [21560539,261560334], [21560539,261560334],
-               [28300342,162200927], [28300342,162200927],
-               [33800641,120120266], [33800641,120120266]
+                # [58405795,71458905,132086311], 
+                [58405795,71458905,132086311],
+                # [58405795,71458905,132086311], [58405795,71458905,132086311],
+                # [52030846,73081589,133883925], [52030846,73081589,133883925],
+                # [52030846,73081589,133883925], [52030846,73081589,133883925],
+                # [52030846,58080925,118658351], [52030846,58080925,90203904],
+                # [52030846,174028694], [52030846,174028694],
+                # [66836588,157028830], [66836588,157028830],
+                # [61403762,131025902], [61403762,131025902]
+                # [28300342,47280247,107580284], [28300342,47280247,107580284],
+                # [28300342,47280247,107580284], [28300342,47280247,107580284],
+                # [29800575,48180720,48200712],[30100455,48180720,48200712],
+                # [21560539,261560334], [21560539,261560334],
+                # [28300342,162200927], [28300342,162200927],
+                # [33800641,120120266], [33800641,120120266]
             ]
     process(date, missions, times)
 
