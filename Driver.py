@@ -1703,8 +1703,11 @@ def process(date, missions, times):
             net = np.array(net,dtype=object)
             
             # Storing combined results in GC array
-            for i in range(len(gc)):
-                gc[i] = np.where(gc[i] == 0, net[i], gc[i])
+            if 'Stealth' not in name:
+                for i in range(len(gc)):
+                    gc[i] = np.where(gc[i] == 0, net[i], gc[i])
+            else:
+                gc = net #Stealthy attack only considers Net, replacing gc with net data
                 
             # Calculate system-wise FPR and TPR
             FPR = np.array([], dtype=float)
@@ -1817,18 +1820,17 @@ def process(date, missions, times):
 def main():
     date = "2021-11-17"
     missions = [
-                # "C-Motion-NEO-1cm.txt",
-                "C-Motion-NEO-250cm.txt"
+                # "C-Motion-NEO-1cm.txt","C-Motion-NEO-250cm.txt",
                 # "C-Motion-ZED-1cm.txt","C-Motion-ZED-250cm.txt",
                 # "C-Idle-NEO-1cm.txt","C-Idle-NEO-250cm.txt",
                 # "C-Idle-ZED-1cm.txt","C-Idle-ZED-250cm.txt",
-                # "C-Stealth-NEO.txt","C-Stealth-ZED.txt",
+                "C-Stealth-NEO.txt","C-Stealth-ZED.txt"
                 # "C-Circle-NEO.txt","C-Circle-ZED.txt",
                 # "C-Square-NEO.txt","C-Square-ZED.txt",
                 # "C-Wave-NEO.txt","C-Wave-ZED.txt"
                 # "P-Motion-NEO-1cm.txt","P-Motion-NEO-250cm.txt",
                 # "P-Motion-ZED-1cm.txt","P-Motion-ZED-250cm.txt",
-                # "P-Stealth-ZED.txt", "P-Stealth-NEO.txt",
+                # "P-Stealth-ZED.txt", "P-Stealth-NEO.txt"
                 # "P-Circle-NEO.txt","P-Circle-ZED.txt",
                 # "P-Square-NEO.txt","P-Square-ZED.txt",
                 # "P-Wave-NEO.txt","P-Wave-ZED.txt"
@@ -1840,18 +1842,17 @@ def main():
     # Plane Circle formatted as [Sim Delay, Disarm]
     # Stealth formatted as [Altitude Reached, Enabled Attacked, Disabled Attack/Attack Limit]
     times = [
-                # [58405795,71458905,132086311], 
-                [58405795,71458905,132086311],
+                # [58405795,71458905,132086311], [58405795,71458905,132086311],
                 # [58405795,71458905,132086311], [58405795,71458905,132086311],
                 # [52030846,73081589,133883925], [52030846,73081589,133883925],
                 # [52030846,73081589,133883925], [52030846,73081589,133883925],
-                # [52030846,58080925,118658351], [52030846,58080925,90203904],
+                [52030846,58080925,118658351], [52030846,58080925,90203904]
                 # [52030846,174028694], [52030846,174028694],
                 # [66836588,157028830], [66836588,157028830],
                 # [61403762,131025902], [61403762,131025902]
                 # [28300342,47280247,107580284], [28300342,47280247,107580284],
                 # [28300342,47280247,107580284], [28300342,47280247,107580284],
-                # [29800575,48180720,48200712],[30100455,48180720,48200712],
+                # [29800575,48180720,48200712],[30100455,48180720,48200712]
                 # [21560539,261560334], [21560539,261560334],
                 # [28300342,162200927], [28300342,162200927],
                 # [33800641,120120266], [33800641,120120266]
