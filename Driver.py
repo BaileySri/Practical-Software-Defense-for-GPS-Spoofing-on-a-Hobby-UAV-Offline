@@ -13,7 +13,7 @@ import pandas as pd
 from os import mkdir
 
 
-def process(date, missions, times):
+def process(date, missions, times, live=False):
     base = "./Data/" + date
     try:
         mkdir(base + "/Results/")
@@ -46,16 +46,26 @@ def process(date, missions, times):
         pairwiseData = base + "/Results/" + dir_type + "PairwiseData/" + name[:-4]
         files = []
         first_detected_attack = 0
-        for i in range(1,4):
+        
+        CNF_Range = 5 if live else 4
+        for i in range(1,CNF_Range):
             files.append(base + "/" + date + "-CNF" + str(i) + "-" + name)
         for i in range(1,3):
             files.append(base + "/" + date + "-ACO" + str(i) + "-" + name)
         CNF1 = pd.read_csv(files[0])
         CNF2 = pd.read_csv(files[1])
         CNF3 = pd.read_csv(files[2])
-        ACO1 = pd.read_csv(files[3])
-        ACO2 = pd.read_csv(files[4])
-        CNFs = [CNF1, CNF2, CNF3]
+        if live:
+            CNF4 = pd.read_csv(files[3])
+            ACO1 = pd.read_csv(files[4])
+            ACO2 = pd.read_csv(files[5])
+        else:
+            ACO1 = pd.read_csv(files[3])
+            ACO2 = pd.read_csv(files[4])
+        if live:
+            CNFs = [CNF1, CNF2, CNF3, CNF4]
+        else:
+            CNFs = [CNF1, CNF2, CNF3]
         ACOs = [ACO1, ACO2]
         CNF = reduce(lambda left, right: pd.merge(left, right, on='TimeUS'), CNFs)
         ACO = reduce(lambda left, right: pd.merge(left, right, on='TimeUS'), ACOs)     
@@ -70,7 +80,7 @@ def process(date, missions, times):
 #---Accelerometer and OF---#
         results.append("---Accelerometer and OF---")
     #Velocity Change
-    #NED
+    #3D
         results.append("--Tri-Axis Velocity--")
         North = pd.DataFrame(data = {'TimeUS':ACO['TimeUS'],'OF':ACO['COFN']-ACO['POFN'],'OFe':ACO['CNe'] + ACO['PNe'],
                     'Acc':ACO['CAN'],'Acce':ACO['CAe']})
@@ -232,24 +242,32 @@ def process(date, missions, times):
         conf_type = '3-Axis'
         conf_sensors = 'ACCOF'
         threshold = 2
+        #Threshold loop
         for x in range(2, test_thresholds+1):
             seq = [x for x in range(1,threshold)]
             coverages[conf_type][conf_sensors][threshold] = np.array([0] * (len(CNF)-threshold+1))
+            #Results loop
             for i in range(len(res.index)):
                 counter = 0
                 # check if index is outside all possible frames
                 if res.index[i] > (len(ACO) - threshold + 1):
                     break
-                # check if enough frames are left to confirm
+                # check if enough frames are left to confirm in ACO
                 if (len(res.index) - (i+threshold-1)) < threshold:
                     break
+                #Threshold check
                 for s in seq:
                     if res.index[i+s] == res.index[i]+s:
                         counter += 1
                 # Marks a detected frame
                 if counter == len(seq):
                     frame_time = ACO.iloc[res.index[i+threshold-1]].TimeUS
-                    coverages[conf_type][conf_sensors][threshold][CNF[CNF.TimeUS > frame_time].iloc[0].name] = frame_time
+                    # new_index maps the ACO timeslot to the CNF timeslot
+                    new_index = CNF[CNF.TimeUS > frame_time].iloc[0].name
+                    if (new_index >= len(coverages[conf_type][conf_sensors][threshold])):
+                        # This implies that we have ACO data pass the last CNF timeslot
+                        break
+                    coverages[conf_type][conf_sensors][threshold][new_index] = frame_time
             if(np.count_nonzero(coverages[conf_type][conf_sensors][threshold]) == 0):
                 break
             threshold += 1
@@ -257,7 +275,7 @@ def process(date, missions, times):
         if len(coverages[conf_type][conf_sensors]) == 1:
             coverages[conf_type][conf_sensors][2] = np.array([0] * (len(CNF)-1))
         
-    #Net
+    #Scalar
         results.append("--Net Velocity--")
         North = ACO['COFN'] - ACO['POFN']
         East = ACO['COFE'] - ACO['POFE']
@@ -435,7 +453,12 @@ def process(date, missions, times):
                 # Marks a detected frame
                 if counter == len(seq):
                     frame_time = ACO.iloc[res.index[i+threshold-1]].TimeUS
-                    coverages[conf_type][conf_sensors][threshold][CNF[CNF.TimeUS > frame_time].iloc[0].name] = frame_time
+                    # new_index maps the ACO timeslot to the CNF timeslot
+                    new_index = CNF[CNF.TimeUS > frame_time].iloc[0].name
+                    if (new_index >= len(coverages[conf_type][conf_sensors][threshold])):
+                        # This implies that we have ACO data pass the last CNF timeslot
+                        break
+                    coverages[conf_type][conf_sensors][threshold][new_index] = frame_time
             if(np.count_nonzero(coverages[conf_type][conf_sensors][threshold]) == 0):
                 break
             threshold += 1
@@ -456,15 +479,10 @@ def process(date, missions, times):
         det = -CNF[['CGpE']]
         GpsGC = map(ToDeg,list(map(np.arctan2,det.values,dot.values)))
         GpsGC = [360 - x if x > 0 else abs(x) for x in GpsGC]
-        GpsErr = [0]
-        for i in range(len(GpsGC)):
-            if i == 0:
-                continue
-            else:
-                GpsErr.append((CNF.iloc[i].CGpe + CNF.iloc[i-1].CGpe)/((CNF.iloc[i].TimeUS-CNF.iloc[i-1].TimeUS)/1000000))
-        CNF['GpsErr'] = GpsErr
-        ErrGPS = pd.DataFrame(data = {'N':abs(CNF['CGpN']) - abs(CNF['GpsErr']),
-                                      'E':abs(CNF['CGpE']) + abs(CNF['GpsErr'])})
+        # Assume that the maximum error in any axis has to be less than or
+        # equal to the speed accuracy
+        ErrGPS = pd.DataFrame(data = {'N':abs(CNF['CGpN']) - abs(CNF['gpSA']),
+                                      'E':abs(CNF['CGpE']) + abs(CNF['gpSA'])})
         dot = abs(CNF[['CGpN']]).multiply(np.array(ErrGPS['N']), axis=0).add(np.array(abs(CNF[['CGpE']]).multiply(np.array(ErrGPS['E']), axis=0)),axis=0)
         det = abs(CNF[['CGpN']]).multiply(np.array(ErrGPS['E']), axis=0).sub(np.array(abs(CNF[['CGpE']]).multiply(np.array(ErrGPS['N']), axis=0)),axis=0)
         ErrGpsGC = abs(np.array(list(map(ToDeg, map(np.arctan2,det.values,dot.values)))))
@@ -479,7 +497,7 @@ def process(date, missions, times):
         #Separating frames that are not useful for confirmation
         invalid = pd.DataFrame(columns=CNF.columns)
         for index, row in CNF.iterrows():
-            if ((row.CGpN <= row.GpsErr) or (row.CGpE <= row.GpsErr)):
+            if ((row.CGpN <= row.gpSA) or (row.CGpE <= row.gpSA)):
                     invalid = invalid.append(row)
             else:
                 continue
@@ -645,13 +663,17 @@ def process(date, missions, times):
 #---Accelerometer and GPS---#
         results.append("---Accelerometer and GPS---")
         #Velocity Change
-    #NED
+    #3D
         results.append("--Tri-Axis Velocity--")
-        North = pd.DataFrame(data = {'TimeUS':CNF['TimeUS'],'GPS':CNF['CGpN']-CNF['PGpN'],'GPe':(CNF['CGpe'] + CNF['PGpe'])/((CNF.iloc[5].TimeUS-CNF.iloc[4].TimeUS)/1000000),
+        # Important assumption here about the GPS Speed Accuracy
+        # We don't assume that the absolute GPS position has good accuracy but 
+        # does have good precision and that the relative change in position
+        # being measured by the gps is accurate enough to use the Speed Accuracy
+        North = pd.DataFrame(data = {'TimeUS':CNF['TimeUS'],'GPS':CNF['CGpN']-CNF['PGpN'],'GPe':CNF['gpSA'],
                                      'Acc':CNF['CAN'],'Acce':CNF['CAe']})
-        East = pd.DataFrame(data = {'TimeUS':CNF['TimeUS'],'GPS':CNF['CGpE']-CNF['PGpE'],'GPe':(CNF['CGpe'] + CNF['PGpe'])/((CNF.iloc[5].TimeUS-CNF.iloc[4].TimeUS)/1000000),
+        East = pd.DataFrame(data = {'TimeUS':CNF['TimeUS'],'GPS':CNF['CGpE']-CNF['PGpE'],'GPe':CNF['gpSA'],
                              'Acc':CNF['CAE'],'Acce':CNF['CAe']})
-        Down = pd.DataFrame(data = {'TimeUS':CNF['TimeUS'],'GPS':CNF['CGpD']-CNF['PGpD'],'GPe':(CNF['CGpe'] + CNF['PGpe'])/((CNF.iloc[5].TimeUS-CNF.iloc[4].TimeUS)/1000000),
+        Down = pd.DataFrame(data = {'TimeUS':CNF['TimeUS'],'GPS':CNF['CGpD']-CNF['PGpD'],'GPe':CNF['gpSA'],
                              'Acc':CNF['CAD'],'Acce':CNF['CAe']})
         res1 = confirm(North)
         res2 = confirm(East)
@@ -667,9 +689,9 @@ def process(date, missions, times):
         #Separating frames that are not useful for confirmation
         invalid = pd.DataFrame(columns=CNF.columns)
         for index, row in CNF.iterrows():
-            if ((((row.CGpN - row.PGpN) <= (row.CGpe + row.PGpe)) and (row.CAN <= row.CAe)) and 
-                (((row.CGpE - row.PGpE) <= (row.CGpe + row.PGpe)) and (row.CAE <= row.CAe)) and
-                (((row.CGpD - row.PGpD) <= (row.CGpe + row.PGpe)) and (row.CAD <= row.CAe))):
+            if ((((row.CGpN - row.PGpN) <= (row.gpSA)) and (row.CAN <= row.CAe)) and 
+                (((row.CGpE - row.PGpE) <= (row.gpSA)) and (row.CAE <= row.CAe)) and
+                (((row.CGpD - row.PGpD) <= (row.gpSA)) and (row.CAD <= row.CAe))):
                     invalid = invalid.append(row)
             else:
                 continue
@@ -831,14 +853,14 @@ def process(date, missions, times):
         if len(coverages[conf_type][conf_sensors]) == 1:
             coverages[conf_type][conf_sensors][2] = np.array([0] * (len(CNF)-1))
                 
-    #Net
+    #Scalar
         results.append("--Net Velocity--")
         North = CNF['CGpN'] - CNF['PGpN']
         East = CNF['CGpE'] - CNF['PGpE']
         Down = CNF['CGpD'] - CNF['PGpD']
         res = confirm(pd.DataFrame(data = {'TimeUS':CNF['TimeUS'],
                                    'GPS':(pd.DataFrame(data ={'N':North, 'E':East, 'D':Down})).apply(norm, axis=1),
-                                   'GPSe':CNF['GpsErr'],
+                                   'GPSe':CNF['gpSA'],
                                    'ACC':(CNF[['CAN','CAE','CAD']]).apply(norm,axis=1),
                                    'ACCe':sqrt(3)*CNF['CAe']}))
         
@@ -850,7 +872,7 @@ def process(date, missions, times):
         #Separating frames that are not useful for confirmation
         invalid = pd.DataFrame(columns=CNF.columns)
         for index, row in CNF.iterrows():
-            if (norm([row.CGpN, row.CGpE, row.CGpD]) <= (sqrt(3) * row.GpsErr) and
+            if (norm([row.CGpN, row.CGpE, row.CGpD]) <= (row.gpSA) and
                 norm([row.CAN, row.CAE, row.CAD]) <= (sqrt(3) * row.CAe)):
                     invalid = invalid.append(row)
             else:
@@ -1016,11 +1038,11 @@ def process(date, missions, times):
 #---GPS and OF---#
         results.append("---GPS and OF---")
         #Velocity Change
-    #NED
+    #3D
         results.append("--Tri-Axis Velocity--")
-        North = pd.DataFrame(data = {'TimeUS':CNF['TimeUS'],'GPS':CNF['CGpN'],'GPe':CNF['GpsErr'],
+        North = pd.DataFrame(data = {'TimeUS':CNF['TimeUS'],'GPS':CNF['CGpN'],'GPe':CNF['gpSA'],
                                       'OF':CNF['COFN'],'OFe':CNF['CNe']})
-        East = pd.DataFrame(data = {'TimeUS':CNF['TimeUS'],'GPS':CNF['CGpE'],'GPe':CNF['GpsErr'],
+        East = pd.DataFrame(data = {'TimeUS':CNF['TimeUS'],'GPS':CNF['CGpE'],'GPe':CNF['gpSA'],
                                     'OF':CNF['COFE'],'OFe':CNF['CEe']})
         res1 = confirm(North)
         res2 = confirm(East)
@@ -1035,8 +1057,8 @@ def process(date, missions, times):
         #Separating frames that are not useful for confirmation
         invalid = pd.DataFrame(columns=CNF.columns)
         for index, row in CNF.iterrows():
-            if (((row.CGpN <= row.GpsErr) and (row.COFN <= row.CNe)) and 
-                ((row.CGpE <= row.GpsErr) and (row.COFE <= row.CEe))):
+            if (((row.CGpN <= row.gpSA) and (row.COFN <= row.CNe)) and 
+                ((row.CGpE <= row.gpSA) and (row.COFE <= row.CEe))):
                     invalid = invalid.append(row)
             else:
                 continue
@@ -1196,13 +1218,13 @@ def process(date, missions, times):
         if len(coverages[conf_type][conf_sensors]) == 1:
             coverages[conf_type][conf_sensors][2] = np.array([0] * (len(CNF)-1))
 
-    #Net
+    #Scalar
         results.append("--Net Velocity--")
         res = confirm(pd.DataFrame(data = {'TimeUS':CNF['TimeUS'],
                                            'OF':(CNF[['COFN','COFE']]).apply(norm, axis=1),
                                            'OFe':(CNF[['CNe','CEe',]]).apply(norm,axis=1),
                                            'GPS':(CNF[['CGpN','CGpE']]).apply(norm,axis=1),
-                                           'GPSe':sqrt(2)*CNF['CGpe']/((CNF.iloc[5].TimeUS-CNF.iloc[4].TimeUS)/1000000.0)}))
+                                           'GPSe':CNF['gpSA']}))
                                                                                       # I selected two arbitrary points to get the dT
         
         # Coverage where threshold = 1
@@ -1214,7 +1236,7 @@ def process(date, missions, times):
         invalid = pd.DataFrame(columns=CNF.columns)
         for index, row in CNF.iterrows():
             if (norm([row.COFN, row.COFE]) <= norm([row.CNe, row.CEe]) and
-                norm([row.CGpN, row.CGpE]) <= (sqrt(2) * row.CGpe)):
+                norm([row.CGpN, row.CGpE]) <= (row.gpSA)):
                     invalid = invalid.append(row)
             else:
                 continue
@@ -1401,7 +1423,7 @@ def process(date, missions, times):
         #Separating frames that are not useful for confirmation
         invalid = pd.DataFrame(columns=CNF.columns)
         for index, row in CNF.iterrows():
-            if ((norm([row.CGpN, row.CGpE]) <= (sqrt(2) * row.GpsErr)) and
+            if ((norm([row.CGpN, row.CGpE]) <= (row.gpSA)) and
                 (norm([row.COFN, row.COFE]) <= (norm([row.CNe, row.CEe])))):
                     invalid = invalid.append(row)
             else:
@@ -1574,7 +1596,7 @@ def process(date, missions, times):
             gc = []
             # Benign data only cares about FPR
 
-            #3-Axis processing
+            #3D processing
             longest = max(len(item) for item in coverages['3-Axis'].values())
             for i in range(1,longest+1):
                 inter = np.array([0] * (len(CNF)-i+1))
@@ -1584,7 +1606,7 @@ def process(date, missions, times):
                     inter = np.where(inter ==0, value[i], inter)
                 triaxis = np.append(triaxis, np.count_nonzero(inter)/len(inter))
                 
-            #Net processing
+            #Scalar processing
             longest = max(len(item) for item in coverages['Net'].values())
             for i in range(1,longest+1):
                 inter = np.array([0] * (len(CNF)-i+1))
@@ -1604,7 +1626,10 @@ def process(date, missions, times):
             longest = max(len(item) for item in coverages['GC'].values())
             for i in range(1,longest+1):
                 inter = np.array([0] * (len(CNF)-i+1))
-                for key, value in coverages['GC'].items(): #Use both GPSMAG and GPSOF
+                for key, value in coverages['GC'].items():
+                    if(name.startswith("P-")):
+                        if(key == "GPSMAG"): #Plane does not use GPSMAG
+                            continue
                     if len(value) < i:
                         continue
                     inter = np.where(inter ==0, value[i], inter)
@@ -1666,17 +1691,22 @@ def process(date, missions, times):
             gc = []
             # Adversarial data needs to calculate FPR and TPR for every THR 
             # Also needs to combine Net and GC data
-            #Net processing
+            #Scalar processing
             longest = max(len(item) for item in coverages['Net'].values())
             for i in range(1,longest+1):
                 inter = np.array([0] * (len(CNF)-i+1))
                 for key, value in coverages['Net'].items():
-                    if(name.startswith("C-")):
-                        if(key == "GPSOF"): #Copter does not use GPSOF in Net
-                            continue
-                    elif(name.startswith("P-")):
-                        if(key == "ACCGPS"): #Plane does not use ACCGPS in Net
-                            continue 
+                    if not live:
+                        if(name.startswith("C-")):
+                            if(key == "GPSOF"): #Sim Copter does not use GPSOF in Net
+                                continue
+                        elif(name.startswith("P-")):
+                            if(key == "ACCGPS"): #Sim Plane does not use ACCGPS in Net
+                                continue 
+                    else:
+                        if(name.startswith("C-")):
+                            if(key == "ACCGPS"): #Live Copter does not use ACCGPS in Net
+                                continue
                     if len(value) < i:
                         continue
                     inter = np.where(inter ==0, value[i], inter)
@@ -1687,6 +1717,11 @@ def process(date, missions, times):
             for i in range(1,longest+1):
                 inter = np.array([0] * (len(CNF)-i+1))
                 for key, value in coverages['GC'].items():
+                    continue
+                    if live:
+                        if(name.startswith("C-")):
+                            if(key == "GPSMAG"): #Live Copter does not use GPSMAG in GC
+                                continue
                     if len(value) < i:
                         continue
                     inter = np.where(inter ==0, value[i], inter)
@@ -1818,46 +1853,66 @@ def process(date, missions, times):
                 outCsv.to_csv(outFiles[i], index=False)        
 
 def main():
-    date = "2021-11-17"
+    # # Data during Oakland Submission
+    # # 2021-11-17 is the copter data
+    # # 2021-11-18 is the plane data
+    # # They need to be run separately
+    # date = "2021-11-17"
+    # missions = [
+    #             "C-Motion-NEO-1cm.txt","C-Motion-NEO-250cm.txt",
+    #             "C-Motion-ZED-1cm.txt","C-Motion-ZED-250cm.txt",
+    #             "C-Idle-NEO-1cm.txt","C-Idle-NEO-250cm.txt",
+    #             "C-Idle-ZED-1cm.txt","C-Idle-ZED-250cm.txt",
+    #             "C-Stealth-NEO.txt","C-Stealth-ZED.txt",
+    #             "C-Circle-NEO.txt","C-Circle-ZED.txt",
+    #             "C-Square-NEO.txt","C-Square-ZED.txt",
+    #             "C-Wave-NEO.txt","C-Wave-ZED.txt"
+    #             "P-Motion-NEO-1cm.txt","P-Motion-NEO-250cm.txt",
+    #             "P-Motion-ZED-1cm.txt","P-Motion-ZED-250cm.txt",
+    #             "P-Stealth-ZED.txt", "P-Stealth-NEO.txt",
+    #             "P-Circle-NEO.txt","P-Circle-ZED.txt",
+    #             "P-Square-NEO.txt","P-Square-ZED.txt",
+    #             "P-Wave-NEO.txt","P-Wave-ZED.txt"
+    #             "C-IdleOF-0.txt", "C-IdleOF-003.txt"
+    #             ]
+    # # Motion formatted as [Mission: 2 WP, Enabled Attack, Disabled Attack]
+    # # Idle formatted as [Mode Guided, Enabled Attack, Disabled Attack]
+    # # Square and Wave formatted as  [Mission: 2 WP, RTL]
+    # # Copter Circle formatted as [Mode Circle, Mode RTL]
+    # # Plane Circle formatted as [Sim Delay, Disarm]
+    # # Stealth formatted as [Altitude Reached, Enabled Attacked, Disabled Attack/Attack Limit]
+    # times = [
+    #             [58405795,71458905,132086311], [58405795,71458905,132086311],
+    #             [58405795,71458905,132086311], [58405795,71458905,132086311],
+    #             [52030846,73081589,133883925], [52030846,73081589,133883925],
+    #             [52030846,73081589,133883925], [52030846,73081589,133883925],
+    #             [52030846,58080925,118658351], [52030846,58080925,90203904],
+    #             [52030846,174028694], [52030846,174028694],
+    #             [66836588,157028830], [66836588,157028830],
+    #             [61403762,131025902], [61403762,131025902]
+    #             [28300342,47280247,107580284], [28300342,47280247,107580284],
+    #             [28300342,47280247,107580284], [28300342,47280247,107580284],
+    #             [29800575,48180720,48200712],[30100455,48180720,48200712],
+    #             [21560539,261560334], [21560539,261560334],
+    #             [28300342,162200927], [28300342,162200927],
+    #             [33800641,120120266], [33800641,120120266]
+    #             [68466435,73284008,114263443],[68466435,73483928,102264078]
+    #         ]
+    date = "2022-02-20"
     missions = [
-                # "C-Motion-NEO-1cm.txt","C-Motion-NEO-250cm.txt",
-                # "C-Motion-ZED-1cm.txt","C-Motion-ZED-250cm.txt",
-                # "C-Idle-NEO-1cm.txt","C-Idle-NEO-250cm.txt",
-                # "C-Idle-ZED-1cm.txt","C-Idle-ZED-250cm.txt",
-                "C-Stealth-NEO.txt","C-Stealth-ZED.txt"
-                # "C-Circle-NEO.txt","C-Circle-ZED.txt",
-                # "C-Square-NEO.txt","C-Square-ZED.txt",
-                # "C-Wave-NEO.txt","C-Wave-ZED.txt"
-                # "P-Motion-NEO-1cm.txt","P-Motion-NEO-250cm.txt",
-                # "P-Motion-ZED-1cm.txt","P-Motion-ZED-250cm.txt",
-                # "P-Stealth-ZED.txt", "P-Stealth-NEO.txt"
-                # "P-Circle-NEO.txt","P-Circle-ZED.txt",
-                # "P-Square-NEO.txt","P-Square-ZED.txt",
-                # "P-Wave-NEO.txt","P-Wave-ZED.txt"
-                ]
-    # Motion formatted as [Mission: 2 WP, Enabled Attack, Disabled Attack]
-    # Idle formatted as [Mode Guided, Enabled Attack, Disabled Attack]
-    # Square and Wave formatted as  [Mission: 2 WP, RTL]
-    # Copter Circle formatted as [Mode Circle, Mode RTL]
-    # Plane Circle formatted as [Sim Delay, Disarm]
-    # Stealth formatted as [Altitude Reached, Enabled Attacked, Disabled Attack/Attack Limit]
+                "C-Benign.txt",
+                "C-50cm.txt",
+                "C-10cm.txt",
+                "C-100cm.txt"
+        ]
     times = [
-                # [58405795,71458905,132086311], [58405795,71458905,132086311],
-                # [58405795,71458905,132086311], [58405795,71458905,132086311],
-                # [52030846,73081589,133883925], [52030846,73081589,133883925],
-                # [52030846,73081589,133883925], [52030846,73081589,133883925],
-                [52030846,58080925,118658351], [52030846,58080925,90203904]
-                # [52030846,174028694], [52030846,174028694],
-                # [66836588,157028830], [66836588,157028830],
-                # [61403762,131025902], [61403762,131025902]
-                # [28300342,47280247,107580284], [28300342,47280247,107580284],
-                # [28300342,47280247,107580284], [28300342,47280247,107580284],
-                # [29800575,48180720,48200712],[30100455,48180720,48200712]
-                # [21560539,261560334], [21560539,261560334],
-                # [28300342,162200927], [28300342,162200927],
-                # [33800641,120120266], [33800641,120120266]
+                [278198022,338703654],
+                [375769166,552048224,565848359],
+                [121500000,188043096,283545288],
+                [294000000,343746356,358847067]
             ]
-    process(date, missions, times)
+    
+    process(date, missions, times, live=True)
 
 if __name__ == "__main__":
     main()
