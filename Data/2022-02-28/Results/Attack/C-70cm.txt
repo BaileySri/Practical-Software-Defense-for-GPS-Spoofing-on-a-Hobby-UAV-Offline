@@ -1,0 +1,104 @@
+---Accelerometer and OF---
+--Tri-Axis Velocity--
+Detected Test: 60/513(11.7%)
+Detected Attack:32/308(10.39%)
+Detected Test without Invalid: 36/453(7.95%)
+Detected Attack without Invalid:21/270(7.78%)
+FPR(Strict): 7.58
+FPR(Permissive): 12.02
+TPR(Strict): 7.78
+TPR(Permissive): 10.39
+Valid Frames (%): 88.30409356725146
+Time-To-Detection (Strict): 1129.28ms
+Time-To-Detection (Permissive): 209.284ms
+--Net Velocity--
+Detected Test: 23/513(4.48%)
+Detected Attack:14/308(4.55%)
+Detected Test without Invalid: 23/495(4.65%)
+Detected Attack without Invalid:14/295(4.75%)
+FPR(Strict): 4.31
+FPR(Permissive): 4.21
+TPR(Strict): 4.75
+TPR(Permissive): 4.55
+Valid Frames (%): 96.49122807017544
+Time-To-Detection (Strict): 859.281ms
+Time-To-Detection (Permissive): 859.281ms
+---GPS and Magnetometer---
+-Ground Course-
+Detected Test: 4/139(2.88%)
+Detected Attack:0/83(0.0%)
+No detected frames in Test Window
+All Attack frames were invalid.
+FPR(Strict): N/A
+FPR(Permissive): 6.67
+TPR(Strict): N/A
+TPR(Permissive): 0.0
+Valid Frames (%): 0.0
+Streak N/A
+TTD (Strict) N/A
+TTD (Permissive) N/A
+---Accelerometer and GPS---
+--Tri-Axis Velocity--
+Detected Test: 0/139(0.0%)
+Detected Attack:0/83(0.0%)
+Detected Test without Invalid: 0/6(0.0%)
+Detected Attack without Invalid:0/4(0.0%)
+FPR(Strict): 0.0
+FPR(Permissive): 0.0
+TPR(Strict): 0.0
+TPR(Permissive): 0.0
+Valid Frames (%): 4.316546762589928
+Streak N/A
+TTD (Strict) N/A
+TTD (Permissive) N/A
+--Net Velocity--
+Detected Test: 0/139(0.0%)
+Detected Attack:0/83(0.0%)
+Detected Test without Invalid: 0/28(0.0%)
+Detected Attack without Invalid:0/3(0.0%)
+FPR(Strict): 0.0
+FPR(Permissive): 0.0
+TPR(Strict): 0.0
+TPR(Permissive): 0.0
+Valid Frames (%): 20.14388489208633
+Streak N/A
+TTD (Strict) N/A
+TTD (Permissive) N/A
+---GPS and OF---
+--Tri-Axis Velocity--
+Detected Test: 70/139(50.36%)
+Detected Attack:69/83(83.13%)
+Detected Test without Invalid: 9/74(12.16%)
+Detected Attack without Invalid:8/21(38.1%)
+FPR(Strict): 1.85
+FPR(Permissive): 1.75
+TPR(Strict): 38.1
+TPR(Permissive): 83.13
+Valid Frames (%): 53.23741007194245
+Time-To-Detection (Strict): 2916.677ms
+Time-To-Detection (Permissive): 2916.677ms
+--Net Velocity--
+Detected Test: 69/139(49.64%)
+Detected Attack:69/83(83.13%)
+Detected Test without Invalid: 69/97(71.13%)
+Detected Attack without Invalid:69/75(92.0%)
+FPR(Strict): 0.0
+FPR(Permissive): 0.0
+TPR(Strict): 92.0
+TPR(Permissive): 83.13
+Valid Frames (%): 69.7841726618705
+Time-To-Detection (Strict): 2916.677ms
+Time-To-Detection (Permissive): 2916.677ms
+-Ground Course-
+Detected Test: 6/139(4.32%)
+Detected Attack:0/83(0.0%)
+Detected Test without Invalid: 3/97(3.09%)
+Detected Attack without Invalid:0/75(0.0%)
+FPR(Strict): 12.0
+FPR(Permissive): 9.68
+TPR(Strict): 0.0
+TPR(Permissive): 0.0
+Valid Frames (%): 69.7841726618705
+Streak N/A
+TTD (Strict) N/A
+TTD (Permissive) N/A

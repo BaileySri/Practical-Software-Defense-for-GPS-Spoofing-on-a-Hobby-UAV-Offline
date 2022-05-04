@@ -13,7 +13,7 @@ import pandas as pd
 from os import mkdir
 
 
-def process(date, missions, times, live=False):
+def process(date, missions, times, live=False, lpf=0):
     base = "./Data/" + date
     try:
         mkdir(base + "/Results/")
@@ -39,13 +39,9 @@ def process(date, missions, times, live=False):
             dir_type = "Attack/"
         else:
             dir_type = "Benign/"
-
-        results = []
-        outfile = base + "/Results/" + dir_type + name
         graphData = base + "/Results/" + dir_type + "GraphData/" + name[:-3] + "csv"
         pairwiseData = base + "/Results/" + dir_type + "PairwiseData/" + name[:-4]
         files = []
-        first_detected_attack = 0
         
         CNF_Range = 5 if live else 4
         for i in range(1,CNF_Range):
@@ -74,14 +70,50 @@ def process(date, missions, times, live=False):
         ACO = ACO.drop(ACO[ACO.TimeUS < timing[0]].index)
         ACO = ACO.drop(ACO[ACO.TimeUS > timing[len(timing) - 1]].index).reset_index(drop=True)
         
+        if(not live):
+            if not 'gpSA' in CNF.columns:
+                CNF['gpSA'] = 0.60 #60cm/s is what we expect for gpSA in live flight
         coverages = {"3-Axis":{"ACCOF":{},"ACCGPS":{},"GPSOF":{}},
                      "Net"   :{"ACCOF":{},"ACCGPS":{},"GPSOF":{}},
                      "GC"    :{"GPSMAG":{}, "GPSOF":{}}}
+        
+        # Low Pass Filter on accelerometer results
+        if(lpf != 0):
+            try:
+                mkdir(base + "/Results/" + dir_type + "PairwiseData/alpha/")
+            except:
+                pass
+            try:    
+                mkdir(base + "/Results/" + dir_type + "PairwiseData/alpha/" + str(int(lpf*100)) + "/")
+            except:
+                pass
+            for index, row in ACO.iterrows():
+                if(index == 0):
+                    continue
+                # ACO.loc[index, "CAN"] = ACO.loc[index, "CAN"]*(lpf) + ACO.loc[index-1, "CAN"]*(1-lpf)
+                # ACO.loc[index, "CAE"] = ACO.loc[index, "CAE"]*(lpf) + ACO.loc[index-1, "CAE"]*(1-lpf)
+                # ACO.loc[index, "CAD"] = ACO.loc[index, "CAD"]*(lpf) + ACO.loc[index-1, "CAD"]*(1-lpf)
+                ACO.loc[index, "COFN"] = ACO.loc[index, "COFN"]*(lpf) + ACO.loc[index-1, "COFN"]*(1-lpf)
+                ACO.loc[index, "COFE"] = ACO.loc[index, "COFE"]*(lpf) + ACO.loc[index-1, "COFE"]*(1-lpf)
+                ACO.loc[index, "POFN"] = ACO.loc[index-1, "COFN"]
+                ACO.loc[index, "POFE"] = ACO.loc[index-1, "COFE"]
+                
+            for index, row in CNF.iterrows():
+                if(index == 0):
+                    continue
+                # CNF.loc[index, "CAN"] = CNF.loc[index, "CAN"]*(lpf) + CNF.loc[index-1, "CAN"]*(1-lpf)
+                # CNF.loc[index, "CAE"] = CNF.loc[index, "CAE"]*(lpf) + CNF.loc[index-1, "CAE"]*(1-lpf)
+                # CNF.loc[index, "CAD"] = CNF.loc[index, "CAD"]*(lpf) + CNF.loc[index-1, "CAD"]*(1-lpf)
+                CNF.loc[index, "COFN"] = CNF.loc[index, "COFN"]*(lpf) + CNF.loc[index-1, "COFN"]*(1-lpf)
+                CNF.loc[index, "COFE"] = CNF.loc[index, "COFE"]*(lpf) + CNF.loc[index-1, "COFE"]*(1-lpf)
+                CNF.loc[index, "POFN"] = CNF.loc[index-1, "COFN"]
+                CNF.loc[index, "POFE"] = CNF.loc[index-1, "COFE"]
+                
+        
+
 #---Accelerometer and OF---#
-        results.append("---Accelerometer and OF---")
     #Velocity Change
     #3D
-        results.append("--Tri-Axis Velocity--")
         North = pd.DataFrame(data = {'TimeUS':ACO['TimeUS'],'OF':ACO['COFN']-ACO['POFN'],'OFe':ACO['CNe'] + ACO['PNe'],
                     'Acc':ACO['CAN'],'Acce':ACO['CAe']})
         East = pd.DataFrame(data = {'TimeUS':ACO['TimeUS'],'OF':ACO['COFE']-ACO['POFE'],'OFe':ACO['CNe'] + ACO['PNe'],
@@ -110,133 +142,6 @@ def process(date, missions, times, live=False):
                     invalid = invalid.append(row)
             else:
                 continue
-        
-        #Calculating Frames for Results
-        if len(timing) == 3: #Attack Results
-            frames_detected_test = res[(res['TimeUS'] >=timing[0]) & 
-                                          (res['TimeUS']<=timing[2])]
-            frames_detected_attack = res[(res['TimeUS']>=timing[1]) & 
-                                         (res['TimeUS']<=timing[2])]
-            frames_test = ACO[(ACO['TimeUS']>=timing[0]) & 
-                              (ACO['TimeUS']<=timing[2])]
-            frames_attack = ACO[(ACO['TimeUS']>=timing[1]) & 
-                                (ACO['TimeUS']<=timing[2])]
-            frames_test_valid = np.setdiff1d(frames_test.TimeUS, invalid.TimeUS)
-            frames_attack_valid = np.setdiff1d(frames_attack.TimeUS, invalid.TimeUS)
-            frames_detected_test_valid = np.setdiff1d(frames_detected_test.TimeUS, invalid.TimeUS)
-            frames_detected_attack_valid = np.setdiff1d(frames_detected_attack.TimeUS, invalid.TimeUS)
-            indices = []
-            if len(frames_detected_attack) != 0:
-                first_detected_attack = frames_detected_attack.iloc[0]
-            for i in frames_detected_attack_valid:
-                indices.append(res.loc[res['TimeUS'] == i].index[0])
-            
-            #Just need the length of the dataframes above
-            frames_attack_valid = len(frames_attack_valid)
-            frames_detected_attack_valid = len(frames_detected_attack_valid)
-            frames_test_valid = len(frames_test_valid)
-            frames_detected_test_valid = len(frames_detected_test_valid)
-            frames_detected_test = len(frames_detected_test)
-            frames_detected_attack = len(frames_detected_attack)
-            frames_test = len(frames_test)
-            frames_attack = len(frames_attack)
-
-            #Save frame results
-            results.append("Detected Test: " + 
-                           str(frames_detected_test) + "/" + str(frames_test) +
-                           "(" + str(round(frames_detected_test * 100/frames_test, 2)) + "%)")
-            if frames_attack == 0:
-                results.append("Detected Attack: Spoofing Limit reached on start.")
-            else:
-                results.append("Detected Attack:" + 
-                               str(frames_detected_attack) + "/" + str(frames_attack) +
-                               "(" + str(round(frames_detected_attack * 100/frames_attack, 2)) + "%)")
-            if frames_test_valid == 0:
-                results.append("No detected frames in Test Window")
-            else:
-                results.append("Detected Test without Invalid: " + 
-                               str(frames_detected_test_valid) + "/" + str(frames_test_valid) +
-                               "(" + str(round(frames_detected_test_valid * 100/frames_test_valid, 2)) + "%)")
-            if frames_attack_valid == 0:
-                results.append("All Attack frames were invalid.")
-            else:
-                results.append("Detected Attack without Invalid:" + 
-                               str(frames_detected_attack_valid) + "/" + str(frames_attack_valid) +
-                               "(" + str(round(frames_detected_attack_valid * 100/frames_attack_valid, 2)) + "%)")
-
-            FP = frames_detected_test - frames_detected_attack
-            TN = frames_test - frames_attack
-            TP = frames_detected_attack
-            FN = frames_attack - frames_detected_attack
-            FP_s = frames_detected_test_valid - frames_detected_attack_valid
-            TN_s = frames_test_valid - frames_attack_valid
-            TP_s = frames_detected_attack_valid
-            FN_s = frames_attack_valid - frames_detected_attack_valid
-            if((FP_s+TN_s) == 0):
-                results.append("FPR(Strict): N/A")
-            else:
-                results.append("FPR(Strict): " + str(round(FP_s/(FP_s+TN_s) * 100,2)))
-            if((FP+TN) == 0):
-                results.append("FPR(Permissive): N/A")
-            else:
-                results.append("FPR(Permissive): " + str(round(FP/(FP+TN) * 100,2)))
-            if((TP_s+FN_s) == 0):
-                results.append("TPR(Strict): N/A")
-            else:
-                results.append("TPR(Strict): " + str(round(TP_s/(TP_s+FN_s) * 100,2)))
-            if((TP+FN) == 0):
-                results.append("TPR(Permissive): N/A")
-            else:
-                results.append("TPR(Permissive): " + str(round(TP/(TP+FN) * 100,2)))
-        else: #Benign results
-            frames_detected_test = res[(res['TimeUS'] >=timing[0]) & 
-                                          (res['TimeUS']<=timing[1])]
-            frames_test = ACO[(ACO['TimeUS']>=timing[0]) & (ACO['TimeUS']<=timing[1])]
-            frames_test_valid = np.setdiff1d(frames_test.TimeUS, invalid.TimeUS)
-            frames_detected_test_valid = np.setdiff1d(frames_detected_test.TimeUS, invalid.TimeUS)
-            indices = []
-            for i in frames_detected_test_valid:
-                indices.append(res.loc[res['TimeUS'] == i].index[0])
-            
-            #Just need the length of the dataframes above
-            frames_test_valid = len(frames_test_valid)
-            frames_detected_test_valid = len(frames_detected_test_valid)
-            frames_test = len(frames_test)
-            frames_detected_test = len(frames_detected_test)
-            results.append("Detected Overall (FPR): " + 
-                            str(frames_detected_test) + "/" + str(frames_test) +
-                            "(" + str(round(frames_detected_test * 100/frames_test, 2)) + "%)")
-            if frames_detected_test_valid == 0:
-                results.append("No detected frames in Test Window")
-            else:
-                results.append("Detected Overall without Invalid (FPR): " + 
-                                str(frames_detected_test_valid) + "/" + str(frames_test_valid) +
-                                "(" + str(round(frames_detected_test_valid * 100/frames_test_valid, 2)) + "%)")
-        results.append("Valid Frames (%): " + str(frames_test_valid * 100/frames_test))
-        
-        streak = 0
-        counter = 1
-        for i in range(1, len(indices)):
-            if indices[i] == indices[i-1] + 1:
-                counter += 1
-            else:
-                if counter > streak:
-                    streak = counter
-                counter = 1
-        if counter > streak:
-            streak = counter
-        if len(indices) == 0:
-            results.append("Streak N/A")
-            results.append("TTD (Strict) N/A")
-        elif len(timing) == 3:
-            results.append("Time-To-Detection (Strict): " + str((res.loc[indices[0]].TimeUS - timing[1])/1000) + "ms")
-        else:
-            results.append("Streak of Windows: " + str(streak))
-        
-        if(( len(timing) == 3) and (frames_detected_attack != 0)):
-            results.append("Time-To-Detection (Permissive): " + str((first_detected_attack.TimeUS - timing[1])/1000) + "ms")
-        else:
-            results.append("TTD (Permissive) N/A")
             
         # Coverage testing of thresholds
         conf_type = '3-Axis'
@@ -276,7 +181,6 @@ def process(date, missions, times, live=False):
             coverages[conf_type][conf_sensors][2] = np.array([0] * (len(CNF)-1))
         
     #Scalar
-        results.append("--Net Velocity--")
         North = ACO['COFN'] - ACO['POFN']
         East = ACO['COFE'] - ACO['POFE']
         Ne = ACO['CNe'] + ACO['PNe']
@@ -303,134 +207,6 @@ def process(date, missions, times, live=False):
                     invalid = invalid.append(row)
             else:
                 continue
-        
-        #Calculating Frames for Results
-        if len(timing) == 3: #Attack Results
-            frames_detected_test = res[(res['TimeUS'] >=timing[0]) & 
-                                          (res['TimeUS']<=timing[2])]
-            frames_detected_attack = res[(res['TimeUS']>=timing[1]) & 
-                                         (res['TimeUS']<=timing[2])]
-            frames_test = ACO[(ACO['TimeUS']>=timing[0]) & 
-                              (ACO['TimeUS']<=timing[2])]
-            frames_attack = ACO[(ACO['TimeUS']>=timing[1]) & 
-                                (ACO['TimeUS']<=timing[2])]
-            frames_test_valid = np.setdiff1d(frames_test.TimeUS, invalid.TimeUS)
-            frames_attack_valid = np.setdiff1d(frames_attack.TimeUS, invalid.TimeUS)
-            frames_detected_test_valid = np.setdiff1d(frames_detected_test.TimeUS, invalid.TimeUS)
-            frames_detected_attack_valid = np.setdiff1d(frames_detected_attack.TimeUS, invalid.TimeUS)
-            if len(frames_detected_attack) != 0:
-                first_detected_attack = frames_detected_attack.iloc[0]
-            indices = []
-            for i in frames_detected_attack_valid:
-                indices.append(res.loc[res['TimeUS'] == i].index[0])
-            
-            #Just need the length of the dataframes above
-            frames_attack_valid = len(frames_attack_valid)
-            frames_detected_attack_valid = len(frames_detected_attack_valid)
-            frames_test_valid = len(frames_test_valid)
-            frames_detected_test_valid = len(frames_detected_test_valid)
-            frames_detected_test = len(frames_detected_test)
-            frames_detected_attack = len(frames_detected_attack)
-            frames_test = len(frames_test)
-            frames_attack = len(frames_attack)
-
-            #Save frame results
-            results.append("Detected Test: " + 
-                           str(frames_detected_test) + "/" + str(frames_test) +
-                           "(" + str(round(frames_detected_test * 100/frames_test, 2)) + "%)")
-            if frames_attack == 0:
-                results.append("Detected Attack: Spoofing Limit reached on start.")
-            else:
-                results.append("Detected Attack:" + 
-                               str(frames_detected_attack) + "/" + str(frames_attack) +
-                               "(" + str(round(frames_detected_attack * 100/frames_attack, 2)) + "%)")
-            if frames_test_valid == 0:
-                results.append("No detected frames in Test Window")
-            else:
-                results.append("Detected Test without Invalid: " + 
-                               str(frames_detected_test_valid) + "/" + str(frames_test_valid) +
-                               "(" + str(round(frames_detected_test_valid * 100/frames_test_valid, 2)) + "%)")
-            if frames_attack_valid == 0:
-                results.append("All Attack frames were invalid.")
-            else:
-                results.append("Detected Attack without Invalid:" + 
-                               str(frames_detected_attack_valid) + "/" + str(frames_attack_valid) +
-                               "(" + str(round(frames_detected_attack_valid * 100/frames_attack_valid, 2)) + "%)")
-                
-            FP = frames_detected_test - frames_detected_attack
-            TN = frames_test - frames_attack
-            TP = frames_detected_attack
-            FN = frames_attack - frames_detected_attack
-            FP_s = frames_detected_test_valid - frames_detected_attack_valid
-            TN_s = frames_test_valid - frames_attack_valid
-            TP_s = frames_detected_attack_valid
-            FN_s = frames_attack_valid - frames_detected_attack_valid
-            if((FP_s+TN_s) == 0):
-                results.append("FPR(Strict): N/A")
-            else:
-                results.append("FPR(Strict): " + str(round(FP_s/(FP_s+TN_s) * 100,2)))
-            if((FP+TN) == 0):
-                results.append("FPR(Permissive): N/A")
-            else:
-                results.append("FPR(Permissive): " + str(round(FP/(FP+TN) * 100,2)))
-            if((TP_s+FN_s) == 0):
-                results.append("TPR(Strict): N/A")
-            else:
-                results.append("TPR(Strict): " + str(round(TP_s/(TP_s+FN_s) * 100,2)))
-            if((TP+FN) == 0):
-                results.append("TPR(Permissive): N/A")
-            else:
-                results.append("TPR(Permissive): " + str(round(TP/(TP+FN) * 100,2)))     
-        else: #Benign results
-            frames_detected_test = res[(res['TimeUS'] >=timing[0]) & 
-                                          (res['TimeUS']<=timing[1])]
-            frames_test = ACO[(ACO['TimeUS']>=timing[0]) & (ACO['TimeUS']<=timing[1])]
-            frames_test_valid = np.setdiff1d(frames_test.TimeUS, invalid.TimeUS)
-            frames_detected_test_valid = np.setdiff1d(frames_detected_test.TimeUS, invalid.TimeUS)
-            indices = []
-            for i in frames_detected_test_valid:
-                indices.append(res.loc[res['TimeUS'] == i].index[0])
-            
-            #Just need the length of the dataframes above
-            frames_test_valid = len(frames_test_valid)
-            frames_detected_test_valid = len(frames_detected_test_valid)
-            frames_test = len(frames_test)
-            frames_detected_test = len(frames_detected_test)
-
-            results.append("Detected Overall (FPR): " + 
-                            str(frames_detected_test) + "/" + str(frames_test) +
-                            "(" + str(round(frames_detected_test * 100/frames_test, 2)) + "%)")
-            if frames_detected_test_valid == 0:
-                results.append("No detected frames in Test Window")
-            else:
-                results.append("Detected Overall without Invalid (FPR): " + 
-                                str(frames_detected_test_valid) + "/" + str(frames_test_valid) +
-                                "(" + str(round(frames_detected_test_valid * 100/frames_test_valid, 2)) + "%)")
-        results.append("Valid Frames (%): " + str(frames_test_valid * 100/frames_test))
-        
-        streak = 0
-        counter = 1
-        for i in range(1, len(indices)):
-            if indices[i] == indices[i-1] + 1:
-                counter += 1
-            else:
-                if counter > streak:
-                    streak = counter
-                counter = 1
-        if counter > streak:
-            streak = counter
-        if len(indices) == 0:
-            results.append("Streak N/A")
-            results.append("TTD (Strict) N/A")
-        elif len(timing) == 3:
-            results.append("Time-To-Detection (Strict): " + str((res.loc[indices[0]].TimeUS - timing[1])/1000) + "ms")
-        else:
-            results.append("Streak of Windows: " + str(streak))
-        
-        if(( len(timing) == 3) and (frames_detected_attack != 0)):
-            results.append("Time-To-Detection (Permissive): " + str((first_detected_attack.TimeUS - timing[1])/1000) + "ms")
-        else:
-            results.append("TTD (Permissive) N/A")
             
         # Coverage testing of thresholds
         conf_type = 'Net'
@@ -468,8 +244,6 @@ def process(date, missions, times, live=False):
         
 
 #---GPS and Magnetometer---#
-        results.append("---GPS and Magnetometer---")
-        results.append("-Ground Course-")
         #Mag GC
         MagGC = map(ToDeg, map(np.arctan2,CNF['m10'].values,CNF['m00'].values))
         MagGC = [x + 360 if x < 0 else x for x in MagGC]
@@ -502,135 +276,6 @@ def process(date, missions, times, live=False):
             else:
                 continue
         
-        #Calculating Frames for Results
-        if len(timing) == 3: #Attack Results
-            frames_detected_test = res[(res['TimeUS'] >=timing[0]) & 
-                                          (res['TimeUS']<=timing[2])]
-            frames_detected_attack = res[(res['TimeUS']>=timing[1]) & 
-                                         (res['TimeUS']<=timing[2])]
-            frames_test = CNF[(CNF['TimeUS']>=timing[0]) & 
-                              (CNF['TimeUS']<=timing[2])]
-            frames_attack = CNF[(CNF['TimeUS']>=timing[1]) & 
-                                (CNF['TimeUS']<=timing[2])]
-            frames_test_valid = np.setdiff1d(frames_test.TimeUS, invalid.TimeUS)
-            frames_attack_valid = np.setdiff1d(frames_attack.TimeUS, invalid.TimeUS)
-            frames_detected_test_valid = np.setdiff1d(frames_detected_test.TimeUS, invalid.TimeUS)
-            frames_detected_attack_valid = np.setdiff1d(frames_detected_attack.TimeUS, invalid.TimeUS)
-            if len(frames_detected_attack) != 0:
-                first_detected_attack = frames_detected_attack.iloc[0]
-            indices = []
-            for i in frames_detected_attack_valid:
-                indices.append(res.loc[res['TimeUS'] == i].index[0])
-            
-            #Just need the length of the dataframes above
-            frames_attack_valid = len(frames_attack_valid)
-            frames_detected_attack_valid = len(frames_detected_attack_valid)
-            frames_test_valid = len(frames_test_valid)
-            frames_detected_test_valid = len(frames_detected_test_valid)
-            frames_detected_test = len(frames_detected_test)
-            frames_detected_attack = len(frames_detected_attack)
-            frames_test = len(frames_test)
-            frames_attack = len(frames_attack)
-
-            #Save frame results
-            results.append("Detected Test: " + 
-                           str(frames_detected_test) + "/" + str(frames_test) +
-                           "(" + str(round(frames_detected_test * 100/frames_test, 2)) + "%)")
-            if frames_attack == 0:
-                results.append("Detected Attack: Spoofing Limit reached on start.")
-            else:
-                results.append("Detected Attack:" + 
-                               str(frames_detected_attack) + "/" + str(frames_attack) +
-                               "(" + str(round(frames_detected_attack * 100/frames_attack, 2)) + "%)")
-            if frames_test_valid == 0:
-                results.append("No detected frames in Test Window")
-            else:
-                results.append("Detected Test without Invalid: " + 
-                               str(frames_detected_test_valid) + "/" + str(frames_test_valid) +
-                               "(" + str(round(frames_detected_test_valid * 100/frames_test_valid, 2)) + "%)")
-            if frames_attack_valid == 0:
-                results.append("All Attack frames were invalid.")
-            else:
-                results.append("Detected Attack without Invalid:" + 
-                               str(frames_detected_attack_valid) + "/" + str(frames_attack_valid) +
-                               "(" + str(round(frames_detected_attack_valid * 100/frames_attack_valid, 2)) + "%)")
-                
-
-            FP = frames_detected_test - frames_detected_attack
-            TN = frames_test - frames_attack
-            TP = frames_detected_attack
-            FN = frames_attack - frames_detected_attack
-            FP_s = frames_detected_test_valid - frames_detected_attack_valid
-            TN_s = frames_test_valid - frames_attack_valid
-            TP_s = frames_detected_attack_valid
-            FN_s = frames_attack_valid - frames_detected_attack_valid
-            if((FP_s+TN_s) == 0):
-                results.append("FPR(Strict): N/A")
-            else:
-                results.append("FPR(Strict): " + str(round(FP_s/(FP_s+TN_s) * 100,2)))
-            if((FP+TN) == 0):
-                results.append("FPR(Permissive): N/A")
-            else:
-                results.append("FPR(Permissive): " + str(round(FP/(FP+TN) * 100,2)))
-            if((TP_s+FN_s) == 0):
-                results.append("TPR(Strict): N/A")
-            else:
-                results.append("TPR(Strict): " + str(round(TP_s/(TP_s+FN_s) * 100,2)))
-            if((TP+FN) == 0):
-                results.append("TPR(Permissive): N/A")
-            else:
-                results.append("TPR(Permissive): " + str(round(TP/(TP+FN) * 100,2)))
-        else: #Benign results
-            frames_detected_test = res[(res['TimeUS'] >=timing[0]) & 
-                                          (res['TimeUS']<=timing[1])]
-            frames_test = CNF[(CNF['TimeUS']>=timing[0]) & (CNF['TimeUS']<=timing[1])]
-            frames_test_valid = np.setdiff1d(frames_test.TimeUS, invalid.TimeUS)
-            frames_detected_test_valid = np.setdiff1d(frames_detected_test.TimeUS, invalid.TimeUS)
-            indices = []
-            for i in frames_detected_test_valid:
-                indices.append(res.loc[res['TimeUS'] == i].index[0])
-
-            #Just need the length of the dataframes above
-            frames_test_valid = len(frames_test_valid)
-            frames_detected_test_valid = len(frames_detected_test_valid)
-            frames_test = len(frames_test)
-            frames_detected_test = len(frames_detected_test)
-
-            results.append("Detected Overall (FPR): " + 
-                            str(frames_detected_test) + "/" + str(frames_test) +
-                            "(" + str(round(frames_detected_test * 100/frames_test, 2)) + "%)")
-            if frames_detected_test_valid == 0:
-                results.append("No detected frames in Test Window")
-            else:
-                results.append("Detected Overall without Invalid (FPR): " + 
-                                str(frames_detected_test_valid) + "/" + str(frames_test_valid) +
-                                "(" + str(round(frames_detected_test_valid * 100/frames_test_valid, 2)) + "%)")
-        results.append("Valid Frames (%): " + str(frames_test_valid * 100/frames_test))
-        
-        streak = 0
-        counter = 1
-        for i in range(1, len(indices)):
-            if indices[i] == indices[i-1] + 1:
-                counter += 1
-            else:
-                if counter > streak:
-                    streak = counter
-                counter = 1
-        if counter > streak:
-            streak = counter
-        if len(indices) == 0:
-            results.append("Streak N/A")
-            results.append("TTD (Strict) N/A")
-        elif len(timing) == 3:
-            results.append("Time-To-Detection (Strict): " + str((res.loc[indices[0]].TimeUS - timing[1])/1000) + "ms")
-        else:
-            results.append("Streak of Windows: " + str(streak))
-       
-        if(( len(timing) == 3) and (frames_detected_attack != 0)):
-            results.append("Time-To-Detection (Permissive): " + str((first_detected_attack.TimeUS - timing[1])/1000) + "ms")
-        else:
-            results.append("TTD (Permissive) N/A")
-            
         # Coverage testing of thresholds
         conf_type = 'GC'
         conf_sensors = 'GPSMAG'
@@ -661,10 +306,7 @@ def process(date, missions, times, live=False):
             coverages[conf_type][conf_sensors][2] = np.array([0] * (len(CNF)-1))
 
 #---Accelerometer and GPS---#
-        results.append("---Accelerometer and GPS---")
-        #Velocity Change
     #3D
-        results.append("--Tri-Axis Velocity--")
         # Important assumption here about the GPS Speed Accuracy
         # We don't assume that the absolute GPS position has good accuracy but 
         # does have good precision and that the relative change in position
@@ -695,134 +337,6 @@ def process(date, missions, times, live=False):
                     invalid = invalid.append(row)
             else:
                 continue
-        
-        #Calculating Frames for Results
-        if len(timing) == 3: #Attack Results
-            frames_detected_test = res[(res['TimeUS'] >=timing[0]) & 
-                                          (res['TimeUS']<=timing[2])]
-            frames_detected_attack = res[(res['TimeUS']>=timing[1]) & 
-                                         (res['TimeUS']<=timing[2])]
-            frames_test = CNF[(CNF['TimeUS']>=timing[0]) & 
-                              (CNF['TimeUS']<=timing[2])]
-            frames_attack = CNF[(CNF['TimeUS']>=timing[1]) & 
-                                (CNF['TimeUS']<=timing[2])]
-            frames_test_valid = np.setdiff1d(frames_test.TimeUS, invalid.TimeUS)
-            frames_attack_valid = np.setdiff1d(frames_attack.TimeUS, invalid.TimeUS)
-            frames_detected_test_valid = np.setdiff1d(frames_detected_test.TimeUS, invalid.TimeUS)
-            frames_detected_attack_valid = np.setdiff1d(frames_detected_attack.TimeUS, invalid.TimeUS)
-            if len(frames_detected_attack) != 0:
-                first_detected_attack = frames_detected_attack.iloc[0]
-            indices = []
-            for i in frames_detected_attack_valid:
-                indices.append(res.loc[res['TimeUS'] == i].index[0])
-            
-            #Just need the length of the dataframes above
-            frames_attack_valid = len(frames_attack_valid)
-            frames_detected_attack_valid = len(frames_detected_attack_valid)
-            frames_test_valid = len(frames_test_valid)
-            frames_detected_test_valid = len(frames_detected_test_valid)
-            frames_detected_test = len(frames_detected_test)
-            frames_detected_attack = len(frames_detected_attack)
-            frames_test = len(frames_test)
-            frames_attack = len(frames_attack)
-
-            #Save frame results
-            results.append("Detected Test: " + 
-                           str(frames_detected_test) + "/" + str(frames_test) +
-                           "(" + str(round(frames_detected_test * 100/frames_test, 2)) + "%)")
-            if frames_attack == 0:
-                results.append("Detected Attack: Spoofing Limit reached on start.")
-            else:
-                results.append("Detected Attack:" + 
-                               str(frames_detected_attack) + "/" + str(frames_attack) +
-                               "(" + str(round(frames_detected_attack * 100/frames_attack, 2)) + "%)")
-            if frames_test_valid == 0:
-                results.append("No detected frames in Test Window")
-            else:
-                results.append("Detected Test without Invalid: " + 
-                               str(frames_detected_test_valid) + "/" + str(frames_test_valid) +
-                               "(" + str(round(frames_detected_test_valid * 100/frames_test_valid, 2)) + "%)")
-            if frames_attack_valid == 0:
-                results.append("All Attack frames were invalid.")
-            else:
-                results.append("Detected Attack without Invalid:" + 
-                               str(frames_detected_attack_valid) + "/" + str(frames_attack_valid) +
-                               "(" + str(round(frames_detected_attack_valid * 100/frames_attack_valid, 2)) + "%)")
-            
-            FP = frames_detected_test - frames_detected_attack
-            TN = frames_test - frames_attack
-            TP = frames_detected_attack
-            FN = frames_attack - frames_detected_attack
-            FP_s = frames_detected_test_valid - frames_detected_attack_valid
-            TN_s = frames_test_valid - frames_attack_valid
-            TP_s = frames_detected_attack_valid
-            FN_s = frames_attack_valid - frames_detected_attack_valid
-            if((FP_s+TN_s) == 0):
-                results.append("FPR(Strict): N/A")
-            else:
-                results.append("FPR(Strict): " + str(round(FP_s/(FP_s+TN_s) * 100,2)))
-            if((FP+TN) == 0):
-                results.append("FPR(Permissive): N/A")
-            else:
-                results.append("FPR(Permissive): " + str(round(FP/(FP+TN) * 100,2)))
-            if((TP_s+FN_s) == 0):
-                results.append("TPR(Strict): N/A")
-            else:
-                results.append("TPR(Strict): " + str(round(TP_s/(TP_s+FN_s) * 100,2)))
-            if((TP+FN) == 0):
-                results.append("TPR(Permissive): N/A")
-            else:
-                results.append("TPR(Permissive): " + str(round(TP/(TP+FN) * 100,2)))
-        else: #Benign results
-            frames_detected_test = res[(res['TimeUS'] >=timing[0]) & 
-                                          (res['TimeUS']<=timing[1])]
-            frames_test = CNF[(CNF['TimeUS']>=timing[0]) & (CNF['TimeUS']<=timing[1])]
-            frames_test_valid = np.setdiff1d(frames_test.TimeUS, invalid.TimeUS)
-            frames_detected_test_valid = np.setdiff1d(frames_detected_test.TimeUS, invalid.TimeUS)
-            indices = []
-            for i in frames_detected_test_valid:
-                indices.append(res.loc[res['TimeUS'] == i].index[0])
-            
-            #Just need the length of the dataframes above
-            frames_test_valid = len(frames_test_valid)
-            frames_detected_test_valid = len(frames_detected_test_valid)
-            frames_test = len(frames_test)
-            frames_detected_test = len(frames_detected_test)
-
-            results.append("Detected Overall (FPR): " + 
-                            str(frames_detected_test) + "/" + str(frames_test) +
-                            "(" + str(round(frames_detected_test * 100/frames_test, 2)) + "%)")
-            if frames_detected_test_valid == 0:
-                results.append("No detected frames in Test Window")
-            else:
-                results.append("Detected Overall without Invalid (FPR): " + 
-                                str(frames_detected_test_valid) + "/" + str(frames_test_valid) +
-                                "(" + str(round(frames_detected_test_valid * 100/frames_test_valid, 2)) + "%)")
-        results.append("Valid Frames (%): " + str(frames_test_valid * 100/frames_test))
-        
-        streak = 0
-        counter = 1
-        for i in range(1, len(indices)):
-            if indices[i] == indices[i-1] + 1:
-                counter += 1
-            else:
-                if counter > streak:
-                    streak = counter
-                counter = 1
-        if counter > streak:
-            streak = counter
-        if len(indices) == 0:
-            results.append("Streak N/A")
-            results.append("TTD (Strict) N/A")
-        elif len(timing) == 3:
-            results.append("Time-To-Detection (Strict): " + str((res.loc[indices[0]].TimeUS - timing[1])/1000) + "ms")
-        else:
-            results.append("Streak of Windows: " + str(streak))
-
-        if(( len(timing) == 3) and (frames_detected_attack != 0)):
-            results.append("Time-To-Detection (Permissive): " + str((first_detected_attack.TimeUS - timing[1])/1000) + "ms")
-        else:
-            results.append("TTD (Permissive) N/A")
             
         # Coverage testing of thresholds
         conf_type = '3-Axis'
@@ -854,7 +368,6 @@ def process(date, missions, times, live=False):
             coverages[conf_type][conf_sensors][2] = np.array([0] * (len(CNF)-1))
                 
     #Scalar
-        results.append("--Net Velocity--")
         North = CNF['CGpN'] - CNF['PGpN']
         East = CNF['CGpE'] - CNF['PGpE']
         Down = CNF['CGpD'] - CNF['PGpD']
@@ -877,134 +390,6 @@ def process(date, missions, times, live=False):
                     invalid = invalid.append(row)
             else:
                 continue
-        
-        #Calculating Frames for Results
-        if len(timing) == 3: #Attack Results
-            frames_detected_test = res[(res['TimeUS'] >=timing[0]) & 
-                                          (res['TimeUS']<=timing[2])]
-            frames_detected_attack = res[(res['TimeUS']>=timing[1]) & 
-                                         (res['TimeUS']<=timing[2])]
-            frames_test = CNF[(CNF['TimeUS']>=timing[0]) & 
-                              (CNF['TimeUS']<=timing[2])]
-            frames_attack = CNF[(CNF['TimeUS']>=timing[1]) & 
-                                (CNF['TimeUS']<=timing[2])]
-            frames_test_valid = np.setdiff1d(frames_test.TimeUS, invalid.TimeUS)
-            frames_attack_valid = np.setdiff1d(frames_attack.TimeUS, invalid.TimeUS)
-            frames_detected_test_valid = np.setdiff1d(frames_detected_test.TimeUS, invalid.TimeUS)
-            frames_detected_attack_valid = np.setdiff1d(frames_detected_attack.TimeUS, invalid.TimeUS)
-            if len(frames_detected_attack) != 0:
-                first_detected_attack = frames_detected_attack.iloc[0]
-            indices = []
-            for i in frames_detected_attack_valid:
-                indices.append(res.loc[res['TimeUS'] == i].index[0])
-            
-            #Just need the length of the dataframes above
-            frames_attack_valid = len(frames_attack_valid)
-            frames_detected_attack_valid = len(frames_detected_attack_valid)
-            frames_test_valid = len(frames_test_valid)
-            frames_detected_test_valid = len(frames_detected_test_valid)
-            frames_detected_test = len(frames_detected_test)
-            frames_detected_attack = len(frames_detected_attack)
-            frames_test = len(frames_test)
-            frames_attack = len(frames_attack)
-
-            #Save frame results
-            results.append("Detected Test: " + 
-                           str(frames_detected_test) + "/" + str(frames_test) +
-                           "(" + str(round(frames_detected_test * 100/frames_test, 2)) + "%)")
-            if frames_attack == 0:
-                results.append("Detected Attack: Spoofing Limit reached on start.")
-            else:
-                results.append("Detected Attack:" + 
-                               str(frames_detected_attack) + "/" + str(frames_attack) +
-                               "(" + str(round(frames_detected_attack * 100/frames_attack, 2)) + "%)")
-            if frames_test_valid == 0:
-                results.append("No detected frames in Test Window")
-            else:
-                results.append("Detected Test without Invalid: " + 
-                               str(frames_detected_test_valid) + "/" + str(frames_test_valid) +
-                               "(" + str(round(frames_detected_test_valid * 100/frames_test_valid, 2)) + "%)")
-            if frames_attack_valid == 0:
-                results.append("All Attack frames were invalid.")
-            else:
-                results.append("Detected Attack without Invalid:" + 
-                               str(frames_detected_attack_valid) + "/" + str(frames_attack_valid) +
-                               "(" + str(round(frames_detected_attack_valid * 100/frames_attack_valid, 2)) + "%)")
-                
-            FP = frames_detected_test - frames_detected_attack
-            TN = frames_test - frames_attack
-            TP = frames_detected_attack
-            FN = frames_attack - frames_detected_attack
-            FP_s = frames_detected_test_valid - frames_detected_attack_valid
-            TN_s = frames_test_valid - frames_attack_valid
-            TP_s = frames_detected_attack_valid
-            FN_s = frames_attack_valid - frames_detected_attack_valid
-            if((FP_s+TN_s) == 0):
-                results.append("FPR(Strict): N/A")
-            else:
-                results.append("FPR(Strict): " + str(round(FP_s/(FP_s+TN_s) * 100,2)))
-            if((FP+TN) == 0):
-                results.append("FPR(Permissive): N/A")
-            else:
-                results.append("FPR(Permissive): " + str(round(FP/(FP+TN) * 100,2)))
-            if((TP_s+FN_s) == 0):
-                results.append("TPR(Strict): N/A")
-            else:
-                results.append("TPR(Strict): " + str(round(TP_s/(TP_s+FN_s) * 100,2)))
-            if((TP+FN) == 0):
-                results.append("TPR(Permissive): N/A")
-            else:
-                results.append("TPR(Permissive): " + str(round(TP/(TP+FN) * 100,2)))
-        else: #Benign results
-            frames_detected_test = res[(res['TimeUS'] >=timing[0]) & 
-                                          (res['TimeUS']<=timing[1])]
-            frames_test = CNF[(CNF['TimeUS']>=timing[0]) & (CNF['TimeUS']<=timing[1])]
-            frames_test_valid = np.setdiff1d(frames_test.TimeUS, invalid.TimeUS)
-            frames_detected_test_valid = np.setdiff1d(frames_detected_test.TimeUS, invalid.TimeUS)
-            indices = []
-            for i in frames_detected_test_valid:
-                indices.append(res.loc[res['TimeUS'] == i].index[0])
-            
-            #Just need the length of the dataframes above
-            frames_test_valid = len(frames_test_valid)
-            frames_detected_test_valid = len(frames_detected_test_valid)
-            frames_test = len(frames_test)
-            frames_detected_test = len(frames_detected_test)
-
-            results.append("Detected Overall (FPR): " + 
-                            str(frames_detected_test) + "/" + str(frames_test) +
-                            "(" + str(round(frames_detected_test * 100/frames_test, 2)) + "%)")
-            if frames_detected_test_valid == 0:
-                results.append("No detected frames in Test Window")
-            else:
-                results.append("Detected Overall without Invalid (FPR): " + 
-                                str(frames_detected_test_valid) + "/" + str(frames_test_valid) +
-                                "(" + str(round(frames_detected_test_valid * 100/frames_test_valid, 2)) + "%)")
-        results.append("Valid Frames (%): " + str(frames_test_valid * 100/frames_test))
-        
-        streak = 0
-        counter = 1
-        for i in range(1, len(indices)):
-            if indices[i] == indices[i-1] + 1:
-                counter += 1
-            else:
-                if counter > streak:
-                    streak = counter
-                counter = 1
-        if counter > streak:
-            streak = counter
-        if len(indices) == 0:
-            results.append("Streak N/A")
-            results.append("TTD (Strict) N/A")
-        elif len(timing) == 3:
-            results.append("Time-To-Detection (Strict): " + str((res.loc[indices[0]].TimeUS - timing[1])/1000) + "ms")
-        else:
-            results.append("Streak of Windows: " + str(streak))
-
-        if(( len(timing) == 3) and (frames_detected_attack != 0)):
-            results.append("Time-To-Detection (Permissive): " + str((first_detected_attack.TimeUS - timing[1])/1000) + "ms")
-        else:
-            results.append("TTD (Permissive) N/A")
             
         # Coverage testing of thresholds
         conf_type = 'Net'
@@ -1036,10 +421,7 @@ def process(date, missions, times, live=False):
             coverages[conf_type][conf_sensors][2] = np.array([0] * (len(CNF)-1))
 
 #---GPS and OF---#
-        results.append("---GPS and OF---")
-        #Velocity Change
     #3D
-        results.append("--Tri-Axis Velocity--")
         North = pd.DataFrame(data = {'TimeUS':CNF['TimeUS'],'GPS':CNF['CGpN'],'GPe':CNF['gpSA'],
                                       'OF':CNF['COFN'],'OFe':CNF['CNe']})
         East = pd.DataFrame(data = {'TimeUS':CNF['TimeUS'],'GPS':CNF['CGpE'],'GPe':CNF['gpSA'],
@@ -1062,132 +444,6 @@ def process(date, missions, times, live=False):
                     invalid = invalid.append(row)
             else:
                 continue
-        
-        #Calculating Frames for Results
-        if len(timing) == 3: #Attack Results
-            frames_detected_test = res[(res['TimeUS'] >=timing[0]) & 
-                                          (res['TimeUS']<=timing[2])]
-            frames_detected_attack = res[(res['TimeUS']>=timing[1]) & 
-                                         (res['TimeUS']<=timing[2])]
-            frames_test = CNF[(CNF['TimeUS']>=timing[0]) & 
-                              (CNF['TimeUS']<=timing[2])]
-            frames_attack = CNF[(CNF['TimeUS']>=timing[1]) & 
-                                (CNF['TimeUS']<=timing[2])]
-            frames_test_valid = np.setdiff1d(frames_test.TimeUS, invalid.TimeUS)
-            frames_attack_valid = np.setdiff1d(frames_attack.TimeUS, invalid.TimeUS)
-            frames_detected_test_valid = np.setdiff1d(frames_detected_test.TimeUS, invalid.TimeUS)
-            frames_detected_attack_valid = np.setdiff1d(frames_detected_attack.TimeUS, invalid.TimeUS)
-            if len(frames_detected_attack) != 0:
-                first_detected_attack = frames_detected_attack.iloc[0]
-            indices = []
-            for i in frames_detected_attack_valid:
-                indices.append(res.loc[res['TimeUS'] == i].index[0])
-            
-            #Just need the length of the dataframes above
-            frames_attack_valid = len(frames_attack_valid)
-            frames_detected_attack_valid = len(frames_detected_attack_valid)
-            frames_test_valid = len(frames_test_valid)
-            frames_detected_test_valid = len(frames_detected_test_valid)
-            frames_detected_test = len(frames_detected_test)
-            frames_detected_attack = len(frames_detected_attack)
-            frames_test = len(frames_test)
-            frames_attack = len(frames_attack)
-
-            #Save frame results
-            results.append("Detected Test: " + 
-                           str(frames_detected_test) + "/" + str(frames_test) +
-                           "(" + str(round(frames_detected_test * 100/frames_test, 2)) + "%)")
-            if frames_attack == 0:
-                results.append("Detected Attack: Spoofing Limit reached on start.")
-            else:
-                results.append("Detected Attack:" + 
-                               str(frames_detected_attack) + "/" + str(frames_attack) +
-                               "(" + str(round(frames_detected_attack * 100/frames_attack, 2)) + "%)")
-            if frames_test_valid == 0:
-                results.append("No detected frames in Test Window")
-            else:
-                results.append("Detected Test without Invalid: " + 
-                               str(frames_detected_test_valid) + "/" + str(frames_test_valid) +
-                               "(" + str(round(frames_detected_test_valid * 100/frames_test_valid, 2)) + "%)")
-            if frames_attack_valid == 0:
-                results.append("All Attack frames were invalid.")
-            else:
-                results.append("Detected Attack without Invalid:" + 
-                               str(frames_detected_attack_valid) + "/" + str(frames_attack_valid) +
-                               "(" + str(round(frames_detected_attack_valid * 100/frames_attack_valid, 2)) + "%)")
-            
-            FP = frames_detected_test - frames_detected_attack
-            TN = frames_test - frames_attack
-            TP = frames_detected_attack
-            FN = frames_attack - frames_detected_attack
-            FP_s = frames_detected_test_valid - frames_detected_attack_valid
-            TN_s = frames_test_valid - frames_attack_valid
-            TP_s = frames_detected_attack_valid
-            FN_s = frames_attack_valid - frames_detected_attack_valid
-            if((FP_s+TN_s) == 0):
-                results.append("FPR(Strict): N/A")
-            else:
-                results.append("FPR(Strict): " + str(round(FP_s/(FP_s+TN_s) * 100,2)))
-            if((FP+TN) == 0):
-                results.append("FPR(Permissive): N/A")
-            else:
-                results.append("FPR(Permissive): " + str(round(FP/(FP+TN) * 100,2)))
-            if((TP_s+FN_s) == 0):
-                results.append("TPR(Strict): N/A")
-            else:
-                results.append("TPR(Strict): " + str(round(TP_s/(TP_s+FN_s) * 100,2)))
-            if((TP+FN) == 0):
-                results.append("TPR(Permissive): N/A")
-            else:
-                results.append("TPR(Permissive): " + str(round(TP/(TP+FN) * 100,2)))
-        else: #Benign results
-            frames_detected_test = res[(res['TimeUS'] >=timing[0]) & 
-                                          (res['TimeUS']<=timing[1])]
-            frames_test = CNF[(CNF['TimeUS']>=timing[0]) & (CNF['TimeUS']<=timing[1])]
-            frames_test_valid = frames_test.index.difference(pd.merge(frames_test, invalid, how='inner', on=['TimeUS']).index)
-            frames_detected_test_valid = frames_detected_test.index.difference(pd.merge(invalid, frames_detected_test, how='inner', on=['TimeUS']).index)
-            indices = frames_detected_test_valid
-            
-            #Just need the length of the dataframes above
-            frames_test_valid = len(frames_test_valid)
-            frames_detected_test_valid = len(frames_detected_test_valid)
-            frames_test = len(frames_test)
-            frames_detected_test = len(frames_detected_test)
-
-            results.append("Detected Overall (FPR): " + 
-                            str(frames_detected_test) + "/" + str(frames_test) +
-                            "(" + str(round(frames_detected_test * 100/frames_test, 2)) + "%)")
-            if frames_detected_test_valid == 0:
-                results.append("No detected frames in Test Window")
-            else:
-                results.append("Detected Overall without Invalid (FPR): " + 
-                                str(frames_detected_test_valid) + "/" + str(frames_test_valid) +
-                                "(" + str(round(frames_detected_test_valid * 100/frames_test_valid, 2)) + "%)")
-        results.append("Valid Frames (%): " + str(frames_test_valid * 100/frames_test))
-
-        streak = 0
-        counter = 1
-        for i in range(1, len(indices)):
-            if indices[i] == indices[i-1] + 1:
-                counter += 1
-            else:
-                if counter > streak:
-                    streak = counter
-                counter = 1
-        if counter > streak:
-            streak = counter
-        if len(indices) == 0:
-            results.append("Streak N/A")
-            results.append("TTD (Strict) N/A")
-        elif len(timing) == 3:
-            results.append("Time-To-Detection (Strict): " + str((res.loc[indices[0]].TimeUS - timing[1])/1000) + "ms")
-        else:
-            results.append("Streak of Windows: " + str(streak))
-
-        if(( len(timing) == 3) and (frames_detected_attack != 0)):
-            results.append("Time-To-Detection (Permissive): " + str((first_detected_attack.TimeUS - timing[1])/1000) + "ms")
-        else:
-            results.append("TTD (Permissive) N/A")
 
         # Coverage testing of thresholds
         conf_type = '3-Axis'
@@ -1219,13 +475,11 @@ def process(date, missions, times, live=False):
             coverages[conf_type][conf_sensors][2] = np.array([0] * (len(CNF)-1))
 
     #Scalar
-        results.append("--Net Velocity--")
         res = confirm(pd.DataFrame(data = {'TimeUS':CNF['TimeUS'],
                                            'OF':(CNF[['COFN','COFE']]).apply(norm, axis=1),
                                            'OFe':(CNF[['CNe','CEe',]]).apply(norm,axis=1),
                                            'GPS':(CNF[['CGpN','CGpE']]).apply(norm,axis=1),
-                                           'GPSe':CNF['gpSA']}))
-                                                                                      # I selected two arbitrary points to get the dT
+                                           'GPSe':CNF['gpSA']}))        
         
         # Coverage where threshold = 1
         coverages['Net']['GPSOF'][1] = np.array([0] * len(CNF))
@@ -1240,132 +494,6 @@ def process(date, missions, times, live=False):
                     invalid = invalid.append(row)
             else:
                 continue
-        
-        #Calculating Frames for Results
-        if len(timing) == 3: #Attack Results
-            frames_detected_test = res[(res['TimeUS'] >=timing[0]) & 
-                                          (res['TimeUS']<=timing[2])]
-            frames_detected_attack = res[(res['TimeUS']>=timing[1]) & 
-                                         (res['TimeUS']<=timing[2])]
-            frames_test = CNF[(CNF['TimeUS']>=timing[0]) & 
-                              (CNF['TimeUS']<=timing[2])]
-            frames_attack = CNF[(CNF['TimeUS']>=timing[1]) & 
-                                (CNF['TimeUS']<=timing[2])]
-            frames_test_valid = np.setdiff1d(frames_test.TimeUS, invalid.TimeUS)
-            frames_attack_valid = np.setdiff1d(frames_attack.TimeUS, invalid.TimeUS)
-            frames_detected_test_valid = np.setdiff1d(frames_detected_test.TimeUS, invalid.TimeUS)
-            frames_detected_attack_valid = np.setdiff1d(frames_detected_attack.TimeUS, invalid.TimeUS)
-            if len(frames_detected_attack) != 0:
-                first_detected_attack = frames_detected_attack.iloc[0]
-            indices = []
-            for i in frames_detected_attack_valid:
-                indices.append(res.loc[res['TimeUS'] == i].index[0])
-            
-            #Just need the length of the dataframes above
-            frames_attack_valid = len(frames_attack_valid)
-            frames_detected_attack_valid = len(frames_detected_attack_valid)
-            frames_test_valid = len(frames_test_valid)
-            frames_detected_test_valid = len(frames_detected_test_valid)
-            frames_detected_test = len(frames_detected_test)
-            frames_detected_attack = len(frames_detected_attack)
-            frames_test = len(frames_test)
-            frames_attack = len(frames_attack)
-
-            #Save frame results
-            results.append("Detected Test: " + 
-                           str(frames_detected_test) + "/" + str(frames_test) +
-                           "(" + str(round(frames_detected_test * 100/frames_test, 2)) + "%)")
-            if frames_attack == 0:
-                results.append("Detected Attack: Spoofing Limit reached on start.")
-            else:
-                results.append("Detected Attack:" + 
-                               str(frames_detected_attack) + "/" + str(frames_attack) +
-                               "(" + str(round(frames_detected_attack * 100/frames_attack, 2)) + "%)")
-            if frames_test_valid == 0:
-                results.append("No detected frames in Test Window")
-            else:
-                results.append("Detected Test without Invalid: " + 
-                               str(frames_detected_test_valid) + "/" + str(frames_test_valid) +
-                               "(" + str(round(frames_detected_test_valid * 100/frames_test_valid, 2)) + "%)")
-            if frames_attack_valid == 0:
-                results.append("All Attack frames were invalid.")
-            else:
-                results.append("Detected Attack without Invalid:" + 
-                               str(frames_detected_attack_valid) + "/" + str(frames_attack_valid) +
-                               "(" + str(round(frames_detected_attack_valid * 100/frames_attack_valid, 2)) + "%)")
-            
-            FP = frames_detected_test - frames_detected_attack
-            TN = frames_test - frames_attack
-            TP = frames_detected_attack
-            FN = frames_attack - frames_detected_attack
-            FP_s = frames_detected_test_valid - frames_detected_attack_valid
-            TN_s = frames_test_valid - frames_attack_valid
-            TP_s = frames_detected_attack_valid
-            FN_s = frames_attack_valid - frames_detected_attack_valid
-            if((FP_s+TN_s) == 0):
-                results.append("FPR(Strict): N/A")
-            else:
-                results.append("FPR(Strict): " + str(round(FP_s/(FP_s+TN_s) * 100,2)))
-            if((FP+TN) == 0):
-                results.append("FPR(Permissive): N/A")
-            else:
-                results.append("FPR(Permissive): " + str(round(FP/(FP+TN) * 100,2)))
-            if((TP_s+FN_s) == 0):
-                results.append("TPR(Strict): N/A")
-            else:
-                results.append("TPR(Strict): " + str(round(TP_s/(TP_s+FN_s) * 100,2)))
-            if((TP+FN) == 0):
-                results.append("TPR(Permissive): N/A")
-            else:
-                results.append("TPR(Permissive): " + str(round(TP/(TP+FN) * 100,2)))
-        else: #Benign results
-            frames_detected_test = res[(res['TimeUS'] >=timing[0]) & 
-                                          (res['TimeUS']<=timing[1])]
-            frames_test = CNF[(CNF['TimeUS']>=timing[0]) & (CNF['TimeUS']<=timing[1])]
-            frames_test_valid = frames_test.index.difference(pd.merge(frames_test, invalid, how='inner', on=['TimeUS']).index)
-            frames_detected_test_valid = frames_detected_test.index.difference(pd.merge(invalid, frames_detected_test, how='inner', on=['TimeUS']).index)
-            indices = frames_detected_test_valid
-            
-            #Just need the length of the dataframes above
-            frames_test_valid = len(frames_test_valid)
-            frames_detected_test_valid = len(frames_detected_test_valid)
-            frames_test = len(frames_test)
-            frames_detected_test = len(frames_detected_test)
-
-            results.append("Detected Overall (FPR): " + 
-                            str(frames_detected_test) + "/" + str(frames_test) +
-                            "(" + str(round(frames_detected_test * 100/frames_test, 2)) + "%)")
-            if frames_detected_test_valid == 0:
-                results.append("No detected frames in Test Window")
-            else:
-                results.append("Detected Overall without Invalid (FPR): " + 
-                                str(frames_detected_test_valid) + "/" + str(frames_test_valid) +
-                                "(" + str(round(frames_detected_test_valid * 100/frames_test_valid, 2)) + "%)")
-        results.append("Valid Frames (%): " + str(frames_test_valid * 100/frames_test))
-
-        streak = 0
-        counter = 1
-        for i in range(1, len(indices)):
-            if indices[i] == indices[i-1] + 1:
-                counter += 1
-            else:
-                if counter > streak:
-                    streak = counter
-                counter = 1
-        if counter > streak:
-            streak = counter
-        if len(indices) == 0:
-            results.append("Streak N/A")
-            results.append("TTD (Strict) N/A")
-        elif len(timing) == 3:
-            results.append("Time-To-Detection (Strict): " + str((res.loc[indices[0]].TimeUS - timing[1])/1000) + "ms")
-        else:
-            results.append("Streak of Windows: " + str(streak))
-        
-        if(( len(timing) == 3) and (frames_detected_attack != 0)):
-            results.append("Time-To-Detection (Permissive): " + str((first_detected_attack.TimeUS - timing[1])/1000) + "ms")
-        else:
-            results.append("TTD (Permissive) N/A")
     
         # Coverage testing of thresholds
         conf_type = 'Net'
@@ -1397,7 +525,6 @@ def process(date, missions, times, live=False):
             coverages[conf_type][conf_sensors][2] = np.array([0] * (len(CNF)-1))
 
     #Ground Course
-        results.append("-Ground Course-")
         dot = CNF[['COFN']]
         det = -CNF[['COFE']]
         OFGC = map(ToDeg, map(np.arctan2, det.values, dot.values))
@@ -1429,134 +556,6 @@ def process(date, missions, times, live=False):
             else:
                 continue
         
-        #Calculating Frames for Results
-        if len(timing) == 3: #Attack Results
-            frames_detected_test = res[(res['TimeUS'] >=timing[0]) & 
-                                          (res['TimeUS']<=timing[2])]
-            frames_detected_attack = res[(res['TimeUS']>=timing[1]) & 
-                                         (res['TimeUS']<=timing[2])]
-            frames_test = CNF[(CNF['TimeUS']>=timing[0]) & 
-                              (CNF['TimeUS']<=timing[2])]
-            frames_attack = CNF[(CNF['TimeUS']>=timing[1]) & 
-                                (CNF['TimeUS']<=timing[2])]
-            frames_test_valid = np.setdiff1d(frames_test.TimeUS, invalid.TimeUS)
-            frames_attack_valid = np.setdiff1d(frames_attack.TimeUS, invalid.TimeUS)
-            frames_detected_test_valid = np.setdiff1d(frames_detected_test.TimeUS, invalid.TimeUS)
-            frames_detected_attack_valid = np.setdiff1d(frames_detected_attack.TimeUS, invalid.TimeUS)
-            if len(frames_detected_attack) != 0:
-                first_detected_attack = frames_detected_attack.iloc[0]
-            indices = []
-            for i in frames_detected_attack_valid:
-                indices.append(res.loc[res['TimeUS'] == i].index[0])
-            
-            #Just need the length of the dataframes above
-            frames_attack_valid = len(frames_attack_valid)
-            frames_detected_attack_valid = len(frames_detected_attack_valid)
-            frames_test_valid = len(frames_test_valid)
-            frames_detected_test_valid = len(frames_detected_test_valid)
-            frames_detected_test = len(frames_detected_test)
-            frames_detected_attack = len(frames_detected_attack)
-            frames_test = len(frames_test)
-            frames_attack = len(frames_attack)
-
-            #Save frame results
-            results.append("Detected Test: " + 
-                           str(frames_detected_test) + "/" + str(frames_test) +
-                           "(" + str(round(frames_detected_test * 100/frames_test, 2)) + "%)")
-            if frames_attack == 0:
-                results.append("Detected Attack: Spoofing Limit reached on start.")
-            else:
-                results.append("Detected Attack:" + 
-                               str(frames_detected_attack) + "/" + str(frames_attack) +
-                               "(" + str(round(frames_detected_attack * 100/frames_attack, 2)) + "%)")
-            if frames_test_valid == 0:
-                results.append("No detected frames in Test Window")
-            else:
-                results.append("Detected Test without Invalid: " + 
-                               str(frames_detected_test_valid) + "/" + str(frames_test_valid) +
-                               "(" + str(round(frames_detected_test_valid * 100/frames_test_valid, 2)) + "%)")
-            if frames_attack_valid == 0:
-                results.append("All Attack frames were invalid.")
-            else:
-                results.append("Detected Attack without Invalid:" + 
-                               str(frames_detected_attack_valid) + "/" + str(frames_attack_valid) +
-                               "(" + str(round(frames_detected_attack_valid * 100/frames_attack_valid, 2)) + "%)")
-            
-            FP = frames_detected_test - frames_detected_attack
-            TN = frames_test - frames_attack
-            TP = frames_detected_attack
-            FN = frames_attack - frames_detected_attack
-            FP_s = frames_detected_test_valid - frames_detected_attack_valid
-            TN_s = frames_test_valid - frames_attack_valid
-            TP_s = frames_detected_attack_valid
-            FN_s = frames_attack_valid - frames_detected_attack_valid
-            if((FP_s+TN_s) == 0):
-                results.append("FPR(Strict): N/A")
-            else:
-                results.append("FPR(Strict): " + str(round(FP_s/(FP_s+TN_s) * 100,2)))
-            if((FP+TN) == 0):
-                results.append("FPR(Permissive): N/A")
-            else:
-                results.append("FPR(Permissive): " + str(round(FP/(FP+TN) * 100,2)))
-            if((TP_s+FN_s) == 0):
-                results.append("TPR(Strict): N/A")
-            else:
-                results.append("TPR(Strict): " + str(round(TP_s/(TP_s+FN_s) * 100,2)))
-            if((TP+FN) == 0):
-                results.append("TPR(Permissive): N/A")
-            else:
-                results.append("TPR(Permissive): " + str(round(TP/(TP+FN) * 100,2)))
-        else: #Benign results
-            frames_detected_test = res[(res['TimeUS'] >=timing[0]) & 
-                                          (res['TimeUS']<=timing[1])]
-            frames_test = CNF[(CNF['TimeUS']>=timing[0]) & (CNF['TimeUS']<=timing[1])]
-            frames_test_valid = np.setdiff1d(frames_test.TimeUS, invalid.TimeUS)
-            frames_detected_test_valid = np.setdiff1d(frames_detected_test.TimeUS, invalid.TimeUS)
-            indices = []
-            for i in frames_detected_test_valid:
-                indices.append(res.loc[res['TimeUS'] == i].index[0])
-            
-            #Just need the length of the dataframes above
-            frames_test_valid = len(frames_test_valid)
-            frames_detected_test_valid = len(frames_detected_test_valid)
-            frames_test = len(frames_test)
-            frames_detected_test = len(frames_detected_test)
-
-            results.append("Detected Overall (FPR): " + 
-                            str(frames_detected_test) + "/" + str(frames_test) +
-                            "(" + str(round(frames_detected_test * 100/frames_test, 2)) + "%)")
-            if frames_detected_test_valid == 0:
-                results.append("No detected frames in Test Window")
-            else:
-                results.append("Detected Overall without Invalid (FPR): " + 
-                                str(frames_detected_test_valid) + "/" + str(frames_test_valid) +
-                                "(" + str(round(frames_detected_test_valid * 100/frames_test_valid, 2)) + "%)")
-        results.append("Valid Frames (%): " + str(frames_test_valid * 100/frames_test))
-        
-        streak = 0
-        counter = 1
-        for i in range(1, len(indices)):
-            if indices[i] == indices[i-1] + 1:
-                counter += 1
-            else:
-                if counter > streak:
-                    streak = counter
-                counter = 1
-        if counter > streak:
-            streak = counter
-        if len(indices) == 0:
-            results.append("Streak N/A")
-            results.append("TTD (Strict) N/A")
-        elif len(timing) == 3:
-            results.append("Time-To-Detection (Strict): " + str((res.loc[indices[0]].TimeUS - timing[1])/1000) + "ms")
-        else:
-            results.append("Streak of Windows: " + str(streak))
-            
-        if(( len(timing) == 3) and (frames_detected_attack != 0)):
-            results.append("Time-To-Detection (Permissive): " + str((first_detected_attack.TimeUS - timing[1])/1000) + "ms")
-        else:
-            results.append("TTD (Permissive) N/A")
-            
         # Coverage testing of thresholds
         conf_type = 'GC'
         conf_sensors = 'GPSOF'
@@ -1585,9 +584,6 @@ def process(date, missions, times, live=False):
         # gaurantees an empty coverage when threshold of 2 detects nothing
         if len(coverages[conf_type][conf_sensors]) == 1:
             coverages[conf_type][conf_sensors][2] = np.array([0] * (len(CNF)-1))
-
-        with open(outfile, 'w') as of:
-            of.writelines(line + '\n' for line in results)
             
         # ROC information
         if len(timing) == 2:
@@ -1684,7 +680,10 @@ def process(date, missions, times, live=False):
                     outCsv = pd.DataFrame(data={'Threshold': range(1,test_thresholds+1),
                                            'GPSOF(FPR)':GPSOF,
                                            'GPSMAG(FPR)':GPSMAG})
-                outCsv.to_csv(outFiles[i], index=False)          
+                if(lpf == 0):
+                    outCsv.to_csv(outFiles[i], index=False)
+                else:
+                    outCsv.to_csv(outFiles[i][:46] + 'alpha/' + str(int(lpf*100)) + outFiles[i][45:],index=False)        
             
         elif len(timing) == 3:
             net = []
@@ -1788,7 +787,7 @@ def process(date, missions, times, live=False):
             # Net, 3-Axis, and GC
             suffixes = ['Net','3-Axis','GC']
             outFiles = [pairwiseData + '-' + suffix + '.csv' for suffix in suffixes]
-            frames_benign = frames_test - frames_attack
+            frames_benign = len(CNF[CNF.TimeUS < timing[1]])
             for i in range(3):
                 FPR_ACCOF = np.array([], dtype=float)
                 FPR_GPSOF = np.array([], dtype=float)
@@ -1850,70 +849,51 @@ def process(date, missions, times, live=False):
                                            'GPSMAG(FPR)':FPR_GPSMAG,
                                            'GPSMAG(TPR)':TPR_GPSMAG})
                 
-                outCsv.to_csv(outFiles[i], index=False)        
+                if(lpf == 0):
+                    outCsv.to_csv(outFiles[i], index=False)
+                else:
+                    outCsv.to_csv(outFiles[i][:46] + 'alpha/' + str(int(lpf*100)) + outFiles[i][45:], index=False)
 
 def main():
-    # # Data during Oakland Submission
-    # # 2021-11-17 is the copter data
-    # # 2021-11-18 is the plane data
-    # # They need to be run separately
-    # date = "2021-11-17"
+    # Simulation Data
+    # date = "2022-04-19"
     # missions = [
-    #             "C-Motion-NEO-1cm.txt","C-Motion-NEO-250cm.txt",
-    #             "C-Motion-ZED-1cm.txt","C-Motion-ZED-250cm.txt",
-    #             "C-Idle-NEO-1cm.txt","C-Idle-NEO-250cm.txt",
-    #             "C-Idle-ZED-1cm.txt","C-Idle-ZED-250cm.txt",
-    #             "C-Stealth-NEO.txt","C-Stealth-ZED.txt",
-    #             "C-Circle-NEO.txt","C-Circle-ZED.txt",
-    #             "C-Square-NEO.txt","C-Square-ZED.txt",
-    #             "C-Wave-NEO.txt","C-Wave-ZED.txt"
-    #             "P-Motion-NEO-1cm.txt","P-Motion-NEO-250cm.txt",
-    #             "P-Motion-ZED-1cm.txt","P-Motion-ZED-250cm.txt",
-    #             "P-Stealth-ZED.txt", "P-Stealth-NEO.txt",
-    #             "P-Circle-NEO.txt","P-Circle-ZED.txt",
-    #             "P-Square-NEO.txt","P-Square-ZED.txt",
-    #             "P-Wave-NEO.txt","P-Wave-ZED.txt"
-    #             "C-IdleOF-0.txt", "C-IdleOF-003.txt"
-    #             ]
-    # # Motion formatted as [Mission: 2 WP, Enabled Attack, Disabled Attack]
-    # # Idle formatted as [Mode Guided, Enabled Attack, Disabled Attack]
-    # # Square and Wave formatted as  [Mission: 2 WP, RTL]
-    # # Copter Circle formatted as [Mode Circle, Mode RTL]
-    # # Plane Circle formatted as [Sim Delay, Disarm]
-    # # Stealth formatted as [Altitude Reached, Enabled Attacked, Disabled Attack/Attack Limit]
+    #             "C-Adversarial-GPS.txt",
+    #             "C-Adversarial-OF.txt",
+    #             "C-Delivery.txt",
+    #             "C-Idle-GPS.txt",
+    #             "C-Idle-OF.txt",
+    #             "P-Adversarial-GPS.txt",
+    #             "P-Delivery.txt"
+    #     ]
     # times = [
-    #             [58405795,71458905,132086311], [58405795,71458905,132086311],
-    #             [58405795,71458905,132086311], [58405795,71458905,132086311],
-    #             [52030846,73081589,133883925], [52030846,73081589,133883925],
-    #             [52030846,73081589,133883925], [52030846,73081589,133883925],
-    #             [52030846,58080925,118658351], [52030846,58080925,90203904],
-    #             [52030846,174028694], [52030846,174028694],
-    #             [66836588,157028830], [66836588,157028830],
-    #             [61403762,131025902], [61403762,131025902]
-    #             [28300342,47280247,107580284], [28300342,47280247,107580284],
-    #             [28300342,47280247,107580284], [28300342,47280247,107580284],
-    #             [29800575,48180720,48200712],[30100455,48180720,48200712],
-    #             [21560539,261560334], [21560539,261560334],
-    #             [28300342,162200927], [28300342,162200927],
-    #             [33800641,120120266], [33800641,120120266]
-    #             [68466435,73284008,114263443],[68466435,73483928,102264078]
+    #             [62315897,87260915,147860832],
+    #             [62315897,87468332,128261175],
+    #             [62308400,136023902],
+    #             [51028747,73264016,133858935],
+    #             [51028747,73261517,113858605],
+    #             [50900465,61640334,82040504],
+    #             [50400665,86400426]
     #         ]
-    date = "2022-02-20"
+    
+    date = "2022-05-01"
     missions = [
-                "C-Benign.txt",
-                "C-50cm.txt",
-                "C-10cm.txt",
-                "C-100cm.txt"
+                "C-Delivery.txt",
+                "C-Idle-GPS.txt",
+                "C-Idle-OF.txt"
         ]
     times = [
-                [278198022,338703654],
-                [375769166,552048224,565848359],
-                [121500000,188043096,283545288],
-                [294000000,343746356,358847067]
-            ]
+                [121153010,193595505],
+                [264334818,274334818,291660048],
+                [286066318,296066318,310068663]
+        ]
     
-    process(date, missions, times, live=True)
+    for i in np.linspace(0, 1, 101):    
+        process(date, missions, times, live=True, lpf=i)
 
+
+
+    
 if __name__ == "__main__":
     main()
 

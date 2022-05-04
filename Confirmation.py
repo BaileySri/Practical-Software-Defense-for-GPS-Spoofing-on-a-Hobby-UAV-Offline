@@ -8,9 +8,93 @@ Preface:
 """
 import numpy as np
 import pandas as pd
+from os import listdir, mkdir
 from sympy import sin, cos, pi, atan2, sqrt
 
-
+# Helper function to put together the CSVs generated for LPF testing
+def combine_csv(path):
+    BenignFiles = listdir(path + 'Results/Benign/PairwiseData/alpha/')
+    BenignFiles.sort(key=int)
+    AttackFiles = listdir(path + 'Results/Attack/PairwiseData/alpha/')
+    AttackFiles.sort(key=int)
+    
+    #Processing the Benign files first
+    # Collecting a list of mission types in the folder
+    Missions = listdir(path + 'Results/Benign/PairwiseData/alpha/' + BenignFiles[0])
+    for i in range(len(Missions)):
+        Missions[i] = Missions[i].split('-')[1]
+    Missions = np.unique(Missions)
+    
+    for i in range(len(Missions)):
+        # Make combined directory
+        try:
+            mkdir(path + 'Results/Benign/PairwiseData/Combined/')
+        except:
+            pass
+        try:
+            mkdir(path + 'Results/Benign/PairwiseData/Combined/' + Missions[i])
+        except:
+            pass
+        
+        GPSOF_CSV = pd.DataFrame()
+        IMUOF_CSV = pd.DataFrame()
+        IMUGPS_CSV = pd.DataFrame()
+        
+        for j in BenignFiles:
+            files = listdir(path + 'Results/Benign/PairwiseData/alpha/' + j)
+            
+            # Only consolidating the Net results, matching on mission name and net
+            target = [match for match in files if Missions[i] in match and 'Net' in match]
+            temp = pd.read_csv(path + 'Results/Benign/PairwiseData/alpha/' + j + '/' + target[0])
+            
+            # Assign the data to a column named for the LPF value
+            GPSOF_CSV[j] = temp['GPSOF(FPR)']
+            IMUOF_CSV[j] = temp['ACCOF(FPR)']
+            IMUGPS_CSV[j] = temp['ACCGPS(FPR)']
+        
+        GPSOF_CSV.to_csv(path + 'Results/Benign/PairwiseData/Combined/' + Missions[i] + '/GPSOF.csv',index=False)
+        IMUOF_CSV.to_csv(path + 'Results/Benign/PairwiseData/Combined/' + Missions[i] + '/IMUOF.csv',index=False)
+        IMUGPS_CSV.to_csv(path + 'Results/Benign/PairwiseData/Combined/' + Missions[i] + '/IMUGPS.csv',index=False)
+    
+    #Processing the Attack files second
+    # Collecting a list of mission types in the folder
+    Missions = listdir(path + 'Results/Attack/PairwiseData/alpha/' + AttackFiles[0])
+    for i in range(len(Missions)):
+        temp = Missions[i].split('-')
+        Missions[i] = temp[1] + "-" + temp[2]
+    Missions = np.unique(Missions)
+    
+    for i in range(len(Missions)):
+        # Make combined directory
+        try:
+            mkdir(path + 'Results/Attack/PairwiseData/Combined/')
+        except:
+            pass
+        try:
+            mkdir(path + 'Results/Attack/PairwiseData/Combined/' + Missions[i])
+        except:
+            pass
+        
+        GPSOF_CSV = pd.DataFrame()
+        IMUOF_CSV = pd.DataFrame()
+        IMUGPS_CSV = pd.DataFrame()
+        
+        for j in BenignFiles:
+            files = listdir(path + 'Results/Attack/PairwiseData/alpha/' + j)
+            
+            # Only consolidating the Net results, matching on mission name and net
+            target = [match for match in files if Missions[i] in match and 'Net' in match]
+            temp = pd.read_csv(path + 'Results/Attack/PairwiseData/alpha/' + j + '/' + target[0])
+            
+            # Assign the data to a column named for the LPF value
+            GPSOF_CSV[j] = temp['GPSOF(FPR)'].append(temp['GPSOF(TPR)'])
+            IMUOF_CSV[j] = temp['ACCOF(FPR)'].append(temp['ACCOF(TPR)'])
+            IMUGPS_CSV[j] = temp['ACCGPS(FPR)'].append(temp['ACCGPS(TPR)'])
+        
+        GPSOF_CSV.to_csv(path + 'Results/Attack/PairwiseData/Combined/' + Missions[i] + '/GPSOF.csv',index=False)
+        IMUOF_CSV.to_csv(path + 'Results/Attack/PairwiseData/Combined/' + Missions[i] + '/IMUOF.csv',index=False)
+        IMUGPS_CSV.to_csv(path + 'Results/Attack/PairwiseData/Combined/' + Missions[i] + '/IMUGPS.csv',index=False)
+    
 # Just a wrapper to cast sympy atan2 to a float
 def arctan2(y, x):
     return(float(atan2(y, x)))
@@ -203,3 +287,10 @@ def reduce_noise(df, rows):
         df.iloc[index, df.columns.get_loc('aR')] -= ef.iloc[1]
         df.iloc[index, df.columns.get_loc('aD')] -= ef.iloc[2]
     return(ef)
+
+
+def main():
+    combine_csv('./Data/2022-05-01/')
+    
+if __name__ == "__main__":
+    main()
