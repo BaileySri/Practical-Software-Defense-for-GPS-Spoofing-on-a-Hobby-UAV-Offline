@@ -8,15 +8,20 @@ Preface:
 """
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 from os import listdir, mkdir
 from sympy import sin, cos, pi, atan2, sqrt
 
 # Helper function to put together the CSVs generated for LPF testing
 def combine_csv(path):
+    tested_values = [2,   4,   6,   8,  10,  12,  14,  16,  18,  20,
+            22,  24,  26,  28,  30,  32,  34,  36,  38,  40,  42,
+            44,  46,  48,  50,  52,  54,  56,  57,  60,  62,  64,
+            66,  68,  70,  72,  74,  76,  78,  80,  82,  84,  86,
+            88,  90,  92,  94,  96,  98, 100]
+    
     BenignFiles = listdir(path + 'Results/Benign/PairwiseData/alpha/')
-    BenignFiles.sort(key=int)
     AttackFiles = listdir(path + 'Results/Attack/PairwiseData/alpha/')
-    AttackFiles.sort(key=int)
     
     #Processing the Benign files first
     # Collecting a list of mission types in the folder
@@ -36,25 +41,48 @@ def combine_csv(path):
         except:
             pass
         
-        GPSOF_CSV = pd.DataFrame()
-        IMUOF_CSV = pd.DataFrame()
-        IMUGPS_CSV = pd.DataFrame()
+        # Setting the columns to 2,4,6,..,100
+        GPSOF_CSV = pd.DataFrame(columns=range(2,102,2))
+        IMUOF_CSV = pd.DataFrame(columns=range(2,102,2))
+        IMUGPS_CSV = pd.DataFrame(columns=range(2,102,2))
         
-        for j in BenignFiles:
-            files = listdir(path + 'Results/Benign/PairwiseData/alpha/' + j)
-            
-            # Only consolidating the Net results, matching on mission name and net
-            target = [match for match in files if Missions[i] in match and 'Net' in match]
-            temp = pd.read_csv(path + 'Results/Benign/PairwiseData/alpha/' + j + '/' + target[0])
-            
-            # Assign the data to a column named for the LPF value
-            GPSOF_CSV[j] = temp['GPSOF(FPR)']
-            IMUOF_CSV[j] = temp['ACCOF(FPR)']
-            IMUGPS_CSV[j] = temp['ACCGPS(FPR)']
+        # Populating them with dummy values for rows 1,2,...,50
+        for j in range(2,102,2):
+            GPSOF_CSV[j] =  [0.0] * 50
+            IMUOF_CSV[j] = [0.0] * 50
+            IMUGPS_CSV[j] = [0.0] * 50
         
-        GPSOF_CSV.to_csv(path + 'Results/Benign/PairwiseData/Combined/' + Missions[i] + '/GPSOF.csv',index=False)
-        IMUOF_CSV.to_csv(path + 'Results/Benign/PairwiseData/Combined/' + Missions[i] + '/IMUOF.csv',index=False)
-        IMUGPS_CSV.to_csv(path + 'Results/Benign/PairwiseData/Combined/' + Missions[i] + '/IMUGPS.csv',index=False)
+        # Replacing row index with 2,4,...,100
+        GPSOF_CSV.index = pd.RangeIndex(2, 102, 2)
+        IMUOF_CSV.index = pd.RangeIndex(2, 102, 2)
+        IMUGPS_CSV.index = pd.RangeIndex(2, 102, 2)
+        
+        # During testing of 2,4,6,...,100, 58 got replaced with 57. Need to replace
+        # here to stay consistent
+        GPSOF_CSV.rename({58:57},axis=0,inplace=True)
+        IMUOF_CSV.rename({58:57},axis=0,inplace=True)
+        IMUGPS_CSV.rename({58:57},axis=0,inplace=True)
+        GPSOF_CSV.rename({58:57},axis=1,inplace=True)
+        IMUOF_CSV.rename({58:57},axis=1,inplace=True)
+        IMUGPS_CSV.rename({58:57},axis=1,inplace=True)
+        
+        for imu in tested_values:
+            for of in tested_values:
+                files = listdir(path + 'Results/Benign/PairwiseData/alpha/imu-' + str(imu) + "_of-" + str(of))
+                
+                # Only consolidating the Net results, matching on mission name and net
+                target = [match for match in files if Missions[i] in match and 'Net' in match]
+                temp = pd.read_csv(path + 'Results/Benign/PairwiseData/alpha/imu-' + str(imu) + "_of-" + str(of) + "/" + target[0])
+                
+                # Assign the data to a row,column named for the LPF value,
+                # Rows are the OF LPF value, Columns are the ACC LPF value
+                GPSOF_CSV.at[of,imu] = temp['GPSOF(FPR)'][0]
+                IMUOF_CSV.at[of,imu] = temp['ACCOF(FPR)'][0]
+                IMUGPS_CSV.at[of,imu] = temp['ACCGPS(FPR)'][0]
+        
+        GPSOF_CSV.to_csv(path + 'Results/Benign/PairwiseData/Combined/' + Missions[i] + '/GPSOF.csv',index=True)
+        IMUOF_CSV.to_csv(path + 'Results/Benign/PairwiseData/Combined/' + Missions[i] + '/IMUOF.csv',index=True)
+        IMUGPS_CSV.to_csv(path + 'Results/Benign/PairwiseData/Combined/' + Missions[i] + '/IMUGPS.csv',index=True)
     
     #Processing the Attack files second
     # Collecting a list of mission types in the folder
@@ -75,26 +103,83 @@ def combine_csv(path):
         except:
             pass
         
-        GPSOF_CSV = pd.DataFrame()
-        IMUOF_CSV = pd.DataFrame()
-        IMUGPS_CSV = pd.DataFrame()
+        # Setting the columns to 2,4,6,..,100
+        GPSOF_FPR_CSV = pd.DataFrame(columns=range(2,102,2))
+        IMUOF_FPR_CSV = pd.DataFrame(columns=range(2,102,2))
+        IMUGPS_FPR_CSV = pd.DataFrame(columns=range(2,102,2))
+        GPSOF_TPR_CSV = pd.DataFrame(columns=range(2,102,2))
+        IMUOF_TPR_CSV = pd.DataFrame(columns=range(2,102,2))
+        IMUGPS_TPR_CSV = pd.DataFrame(columns=range(2,102,2))
         
-        for j in BenignFiles:
-            files = listdir(path + 'Results/Attack/PairwiseData/alpha/' + j)
-            
-            # Only consolidating the Net results, matching on mission name and net
-            target = [match for match in files if Missions[i] in match and 'Net' in match]
-            temp = pd.read_csv(path + 'Results/Attack/PairwiseData/alpha/' + j + '/' + target[0])
-            
-            # Assign the data to a column named for the LPF value
-            GPSOF_CSV[j] = temp['GPSOF(FPR)'].append(temp['GPSOF(TPR)'])
-            IMUOF_CSV[j] = temp['ACCOF(FPR)'].append(temp['ACCOF(TPR)'])
-            IMUGPS_CSV[j] = temp['ACCGPS(FPR)'].append(temp['ACCGPS(TPR)'])
+        # Populating them with dummy values for rows 1,2,...,50
+        for j in range(2,102,2):
+            GPSOF_FPR_CSV[j] =  [0.0] * 50
+            IMUOF_FPR_CSV[j] = [0.0] * 50
+            IMUGPS_FPR_CSV[j] = [0.0] * 50
+            GPSOF_TPR_CSV[j] =  [0.0] * 50
+            IMUOF_TPR_CSV[j] = [0.0] * 50
+            IMUGPS_TPR_CSV[j] = [0.0] * 50
         
-        GPSOF_CSV.to_csv(path + 'Results/Attack/PairwiseData/Combined/' + Missions[i] + '/GPSOF.csv',index=False)
-        IMUOF_CSV.to_csv(path + 'Results/Attack/PairwiseData/Combined/' + Missions[i] + '/IMUOF.csv',index=False)
-        IMUGPS_CSV.to_csv(path + 'Results/Attack/PairwiseData/Combined/' + Missions[i] + '/IMUGPS.csv',index=False)
+        # Replacing row index with 2,4,...,100
+        GPSOF_FPR_CSV.index = pd.RangeIndex(2, 102, 2)
+        IMUOF_FPR_CSV.index = pd.RangeIndex(2, 102, 2)
+        IMUGPS_FPR_CSV.index = pd.RangeIndex(2, 102, 2)
+        GPSOF_TPR_CSV.index = pd.RangeIndex(2, 102, 2)
+        IMUOF_TPR_CSV.index = pd.RangeIndex(2, 102, 2)
+        IMUGPS_TPR_CSV.index = pd.RangeIndex(2, 102, 2)
+        
+        # During testing of 2,4,6,...,100, 58 got replaced with 57. Need to replace
+        # here to stay consistent
+        GPSOF_FPR_CSV.rename({58:57},axis=0,inplace=True)
+        IMUOF_FPR_CSV.rename({58:57},axis=0,inplace=True)
+        IMUGPS_FPR_CSV.rename({58:57},axis=0,inplace=True)
+        GPSOF_FPR_CSV.rename({58:57},axis=1,inplace=True)
+        IMUOF_FPR_CSV.rename({58:57},axis=1,inplace=True)
+        IMUGPS_FPR_CSV.rename({58:57},axis=1,inplace=True)
+        GPSOF_TPR_CSV.rename({58:57},axis=0,inplace=True)
+        IMUOF_TPR_CSV.rename({58:57},axis=0,inplace=True)
+        IMUGPS_TPR_CSV.rename({58:57},axis=0,inplace=True)
+        GPSOF_TPR_CSV.rename({58:57},axis=1,inplace=True)
+        IMUOF_TPR_CSV.rename({58:57},axis=1,inplace=True)
+        IMUGPS_TPR_CSV.rename({58:57},axis=1,inplace=True)
+        
+        for imu in tested_values:
+            for of in tested_values:
+                files = listdir(path + 'Results/Attack/PairwiseData/alpha/imu-' + str(imu) + "_of-" + str(of))
+            
+                # Only consolidating the Net results, matching on mission name and net
+                target = [match for match in files if Missions[i] in match and 'Net' in match]
+                temp = pd.read_csv(path + 'Results/Attack/PairwiseData/alpha/imu-' + str(imu) + "_of-" + str(of) + "/" + target[0])
+           
+                # Assign the data to a row,column named for the LPF value,
+                # Rows are the OF LPF value, Columns are the ACC LPF value
+                GPSOF_FPR_CSV.at[of, imu] = temp['GPSOF(FPR)'][0]
+                IMUOF_FPR_CSV.at[of,imu] = temp['ACCOF(FPR)'][0]
+                IMUGPS_FPR_CSV.at[of,imu] = temp['ACCGPS(FPR)'][0]
+                GPSOF_TPR_CSV.at[of,imu] = temp['GPSOF(TPR)'][0]
+                IMUOF_TPR_CSV.at[of,imu] = temp['ACCOF(TPR)'][0]
+                IMUGPS_TPR_CSV.at[of,imu] = temp['ACCGPS(TPR)'][0]
+        
+        GPSOF_FPR_CSV.to_csv(path + 'Results/Attack/PairwiseData/Combined/' + Missions[i] + '/GPSOF_FPR.csv',index=True)
+        IMUOF_FPR_CSV.to_csv(path + 'Results/Attack/PairwiseData/Combined/' + Missions[i] + '/IMUOF_FPR.csv',index=True)
+        IMUGPS_FPR_CSV.to_csv(path + 'Results/Attack/PairwiseData/Combined/' + Missions[i] + '/IMUGPS_FPR.csv',index=True)
+        GPSOF_TPR_CSV.to_csv(path + 'Results/Attack/PairwiseData/Combined/' + Missions[i] + '/GPSOF_TPR.csv',index=True)
+        IMUOF_TPR_CSV.to_csv(path + 'Results/Attack/PairwiseData/Combined/' + Missions[i] + '/IMUOF_TPR.csv',index=True)
+        IMUGPS_TPR_CSV.to_csv(path + 'Results/Attack/PairwiseData/Combined/' + Missions[i] + '/IMUGPS_TPR.csv',index=True)
+
+# Helper function to present plots of results    
+def graph_conf(ts, sig1, sig1_bound, sig2, sig2_bound, names=["sig1", "sig2"]):
+    fig = plt.figure()
+    x = ts
     
+    # First signal
+    plt.errorbar(x, sig1, yerr=sig1_bound, label=names[0])
+    
+    # Second signal
+    plt.errorbar(x, sig2, yerr=sig2_bound, label=names[1])
+    
+    plt.legend(loc='lower right')
+
 # Just a wrapper to cast sympy atan2 to a float
 def arctan2(y, x):
     return(float(atan2(y, x)))

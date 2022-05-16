@@ -10,27 +10,18 @@ from functools import reduce
 from math import sqrt, cos, tan
 import numpy as np
 import pandas as pd
-from os import mkdir
+from pathlib import Path
+from multiprocessing import Pool
+from itertools import repeat
+from time import time
 
 
-def process(date, missions, times, live=False, lpf=0):
+def process(date, missions, times, live=False, imulpf=0, oflpf=0):
     base = "./Data/" + date
-    try:
-        mkdir(base + "/Results/")
-        mkdir(base + "/Results/Attack/")
-        mkdir(base + "/Results/Benign/")
-    except:
-        print("Results directory already exists.")
-    try:
-        mkdir(base + "/Results/Attack/GraphData/")
-        mkdir(base + "/Results/Benign/GraphData/")
-    except:
-        print("GraphData directory already exists.")
-    try:
-        mkdir(base + "/Results/Attack/PairwiseData/")
-        mkdir(base + "/Results/Benign/PairwiseData/")
-    except:
-        print("PairwiseData directory already exists.")
+    Path(base + "/Results/Attack/GraphData/").mkdir(parents=True, exist_ok=True)
+    Path(base + "/Results/Benign/GraphData/").mkdir(parents=True, exist_ok=True)
+    Path(base + "/Results/Attack/PairwiseData/").mkdir(parents=True, exist_ok=True)
+    Path(base + "/Results/Benign/PairwiseData/").mkdir(parents=True, exist_ok=True)
 
     test_thresholds = 30
     tests = zip(missions, times)
@@ -77,37 +68,48 @@ def process(date, missions, times, live=False, lpf=0):
                      "Net"   :{"ACCOF":{},"ACCGPS":{},"GPSOF":{}},
                      "GC"    :{"GPSMAG":{}, "GPSOF":{}}}
         
-        # Low Pass Filter on accelerometer results
-        if(lpf != 0):
-            try:
-                mkdir(base + "/Results/" + dir_type + "PairwiseData/alpha/")
-            except:
-                pass
-            try:    
-                mkdir(base + "/Results/" + dir_type + "PairwiseData/alpha/" + str(int(lpf*100)) + "/")
-            except:
-                pass
+        if((imulpf != 0) or (oflpf != 0)):
+            # LPF directory
+            Path(base + "/Results/" + dir_type + 
+                  "PairwiseData/alpha/imu-" + str(int(imulpf*100)) +
+                  '_of-' + str(int(oflpf * 100)) + "/").mkdir(parents=True, exist_ok=True)
+        
+        # Low Pass Filter on OF results
+        # LPF values are the % of the new data being used
+        if(oflpf != 0):
             for index, row in ACO.iterrows():
                 if(index == 0):
                     continue
-                # ACO.loc[index, "CAN"] = ACO.loc[index, "CAN"]*(lpf) + ACO.loc[index-1, "CAN"]*(1-lpf)
-                # ACO.loc[index, "CAE"] = ACO.loc[index, "CAE"]*(lpf) + ACO.loc[index-1, "CAE"]*(1-lpf)
-                # ACO.loc[index, "CAD"] = ACO.loc[index, "CAD"]*(lpf) + ACO.loc[index-1, "CAD"]*(1-lpf)
-                ACO.loc[index, "COFN"] = ACO.loc[index, "COFN"]*(lpf) + ACO.loc[index-1, "COFN"]*(1-lpf)
-                ACO.loc[index, "COFE"] = ACO.loc[index, "COFE"]*(lpf) + ACO.loc[index-1, "COFE"]*(1-lpf)
+                ACO.loc[index, "COFN"] = ACO.loc[index, "COFN"]*(oflpf) + ACO.loc[index-1, "COFN"]*(1-oflpf)
+                ACO.loc[index, "COFE"] = ACO.loc[index, "COFE"]*(oflpf) + ACO.loc[index-1, "COFE"]*(1-oflpf)
                 ACO.loc[index, "POFN"] = ACO.loc[index-1, "COFN"]
                 ACO.loc[index, "POFE"] = ACO.loc[index-1, "COFE"]
                 
             for index, row in CNF.iterrows():
                 if(index == 0):
                     continue
-                # CNF.loc[index, "CAN"] = CNF.loc[index, "CAN"]*(lpf) + CNF.loc[index-1, "CAN"]*(1-lpf)
-                # CNF.loc[index, "CAE"] = CNF.loc[index, "CAE"]*(lpf) + CNF.loc[index-1, "CAE"]*(1-lpf)
-                # CNF.loc[index, "CAD"] = CNF.loc[index, "CAD"]*(lpf) + CNF.loc[index-1, "CAD"]*(1-lpf)
-                CNF.loc[index, "COFN"] = CNF.loc[index, "COFN"]*(lpf) + CNF.loc[index-1, "COFN"]*(1-lpf)
-                CNF.loc[index, "COFE"] = CNF.loc[index, "COFE"]*(lpf) + CNF.loc[index-1, "COFE"]*(1-lpf)
+                CNF.loc[index, "COFN"] = CNF.loc[index, "COFN"]*(oflpf) + CNF.loc[index-1, "COFN"]*(1-oflpf)
+                CNF.loc[index, "COFE"] = CNF.loc[index, "COFE"]*(oflpf) + CNF.loc[index-1, "COFE"]*(1-oflpf)
                 CNF.loc[index, "POFN"] = CNF.loc[index-1, "COFN"]
                 CNF.loc[index, "POFE"] = CNF.loc[index-1, "COFE"]
+                
+        # Low Pass Filter on IMU results
+        if(imulpf != 0):
+            for index, row in ACO.iterrows():
+                if(index == 0):
+                    continue
+                ACO.loc[index, "CAN"] = ACO.loc[index, "CAN"]*(imulpf) + ACO.loc[index-1, "CAN"]*(1-imulpf)
+                ACO.loc[index, "CAE"] = ACO.loc[index, "CAE"]*(imulpf) + ACO.loc[index-1, "CAE"]*(1-imulpf)
+                ACO.loc[index, "CAD"] = ACO.loc[index, "CAD"]*(imulpf) + ACO.loc[index-1, "CAD"]*(1-imulpf)
+                
+                
+            for index, row in CNF.iterrows():
+                if(index == 0):
+                    continue
+                CNF.loc[index, "CAN"] = CNF.loc[index, "CAN"]*(imulpf) + CNF.loc[index-1, "CAN"]*(1-imulpf)
+                CNF.loc[index, "CAE"] = CNF.loc[index, "CAE"]*(imulpf) + CNF.loc[index-1, "CAE"]*(1-imulpf)
+                CNF.loc[index, "CAD"] = CNF.loc[index, "CAD"]*(imulpf) + CNF.loc[index-1, "CAD"]*(1-imulpf)
+                
                 
         
 
@@ -185,11 +187,13 @@ def process(date, missions, times, live=False, lpf=0):
         East = ACO['COFE'] - ACO['POFE']
         Ne = ACO['CNe'] + ACO['PNe']
         Ee = ACO['CEe'] + ACO['PEe']
-        res = confirm(pd.DataFrame(data = {'TimeUS':ACO['TimeUS'],
+        # Added IR below to make it easier to view variables when debugging
+        IR = pd.DataFrame(data = {'TimeUS':ACO['TimeUS'],
                                    'OF':(pd.DataFrame(data = {"N":North, "E":East})).apply(norm, axis=1),
                                    'OFe':(pd.DataFrame(data = {"N":Ne, "E":Ee})).apply(norm,axis=1),
                                    'ACC':(ACO[['CAN','CAE']]).apply(norm,axis=1),
-                                   'ACCe':sqrt(2)*ACO['CAe']}))
+                                   'ACCe':sqrt(2)*ACO['CAe']})
+        res = confirm(IR)
         
         # Coverage where threshold = 1
         coverages['Net']['ACCOF'][1] = np.array([0] * len(CNF))
@@ -261,7 +265,9 @@ def process(date, missions, times, live=False, lpf=0):
         det = abs(CNF[['CGpN']]).multiply(np.array(ErrGPS['E']), axis=0).sub(np.array(abs(CNF[['CGpE']]).multiply(np.array(ErrGPS['N']), axis=0)),axis=0)
         ErrGpsGC = abs(np.array(list(map(ToDeg, map(np.arctan2,det.values,dot.values)))))
 
-        res = confirm(pd.DataFrame( data = {'TimeUS':CNF['TimeUS'],'MagGC':MagGC, 'MagErr':CNF['Gye'],'GPSGC':GpsGC,'GPSErr':ErrGpsGC}),wrap=True)
+        # Added IR below to make it easier to view variables when debugging
+        IR = pd.DataFrame( data = {'TimeUS':CNF['TimeUS'],'MagGC':MagGC, 'MagErr':CNF['Gye'],'GPSGC':GpsGC,'GPSErr':ErrGpsGC})
+        res = confirm(IR, wrap=True)
 
         # Coverage where threshold = 1
         coverages['GC']['GPSMAG'][1] = np.array([0] * len(CNF))
@@ -311,11 +317,11 @@ def process(date, missions, times, live=False, lpf=0):
         # We don't assume that the absolute GPS position has good accuracy but 
         # does have good precision and that the relative change in position
         # being measured by the gps is accurate enough to use the Speed Accuracy
-        North = pd.DataFrame(data = {'TimeUS':CNF['TimeUS'],'GPS':CNF['CGpN']-CNF['PGpN'],'GPe':CNF['gpSA'],
+        North = pd.DataFrame(data = {'TimeUS':CNF['TimeUS'],'GPS':CNF['CGpN']-CNF['PGpN'],'GPe':2*CNF['gpSA'],
                                      'Acc':CNF['CAN'],'Acce':CNF['CAe']})
-        East = pd.DataFrame(data = {'TimeUS':CNF['TimeUS'],'GPS':CNF['CGpE']-CNF['PGpE'],'GPe':CNF['gpSA'],
+        East = pd.DataFrame(data = {'TimeUS':CNF['TimeUS'],'GPS':CNF['CGpE']-CNF['PGpE'],'GPe':2*CNF['gpSA'],
                              'Acc':CNF['CAE'],'Acce':CNF['CAe']})
-        Down = pd.DataFrame(data = {'TimeUS':CNF['TimeUS'],'GPS':CNF['CGpD']-CNF['PGpD'],'GPe':CNF['gpSA'],
+        Down = pd.DataFrame(data = {'TimeUS':CNF['TimeUS'],'GPS':CNF['CGpD']-CNF['PGpD'],'GPe':2*CNF['gpSA'],
                              'Acc':CNF['CAD'],'Acce':CNF['CAe']})
         res1 = confirm(North)
         res2 = confirm(East)
@@ -371,11 +377,15 @@ def process(date, missions, times, live=False, lpf=0):
         North = CNF['CGpN'] - CNF['PGpN']
         East = CNF['CGpE'] - CNF['PGpE']
         Down = CNF['CGpD'] - CNF['PGpD']
-        res = confirm(pd.DataFrame(data = {'TimeUS':CNF['TimeUS'],
+        IR = pd.DataFrame(data = {'TimeUS':CNF['TimeUS'],
                                    'GPS':(pd.DataFrame(data ={'N':North, 'E':East, 'D':Down})).apply(norm, axis=1),
-                                   'GPSe':CNF['gpSA'],
+                                   'GPSe': 2*CNF['gpSA'],        # A little tricky here, gpSA is the magnitude of the speed already
+                                                                 # in the 3D approach we have to assume the full magnitude is the error
+                                                                 # along a single axis. Here since we are simply working with the magnitude
+                                                                 # we can assume gpSA * 2 for total magnitude error
                                    'ACC':(CNF[['CAN','CAE','CAD']]).apply(norm,axis=1),
-                                   'ACCe':sqrt(3)*CNF['CAe']}))
+                                   'ACCe':sqrt(3)*CNF['CAe']})
+        res = confirm(IR)
         
         # Coverage where threshold = 1
         coverages['Net']['ACCGPS'][1] = np.array([0] * len(CNF))
@@ -475,11 +485,12 @@ def process(date, missions, times, live=False, lpf=0):
             coverages[conf_type][conf_sensors][2] = np.array([0] * (len(CNF)-1))
 
     #Scalar
-        res = confirm(pd.DataFrame(data = {'TimeUS':CNF['TimeUS'],
+        IR = pd.DataFrame(data = {'TimeUS':CNF['TimeUS'],
                                            'OF':(CNF[['COFN','COFE']]).apply(norm, axis=1),
                                            'OFe':(CNF[['CNe','CEe',]]).apply(norm,axis=1),
                                            'GPS':(CNF[['CGpN','CGpE']]).apply(norm,axis=1),
-                                           'GPSe':CNF['gpSA']}))        
+                                           'GPSe':CNF['gpSA']}) # Read note on error in the Scalar approach for GPSACC
+        res = confirm(IR)        
         
         # Coverage where threshold = 1
         coverages['Net']['GPSOF'][1] = np.array([0] * len(CNF))
@@ -535,12 +546,12 @@ def process(date, missions, times, live=False, lpf=0):
         det = abs(CNF[['COFN']]).multiply(np.array(ErrOF['E']), axis=0).sub(np.array(abs(CNF[['COFE']]).multiply(np.array(ErrOF['N']), axis=0)),axis=0)
         ErrOFGC = abs(np.array(list(map(ToDeg, map(np.arctan2, det.values, dot.values)))))
         
-        res = confirm(pd.DataFrame( data = {'TimeUS':CNF['TimeUS'],
+        IR = pd.DataFrame( data = {'TimeUS':CNF['TimeUS'],
                                             'OFGC':OFGC,
                                             'OFErr':ErrOFGC,
                                             'GPSGC':GpsGC,
-                                            'GPSErr':ErrGpsGC}),
-                      wrap=True)
+                                            'GPSErr':ErrGpsGC})
+        res = confirm(IR, wrap=True)
         
         # Coverage where threshold = 1
         coverages['GC']['GPSOF'][1] = np.array([0] * len(CNF))
@@ -680,10 +691,12 @@ def process(date, missions, times, live=False, lpf=0):
                     outCsv = pd.DataFrame(data={'Threshold': range(1,test_thresholds+1),
                                            'GPSOF(FPR)':GPSOF,
                                            'GPSMAG(FPR)':GPSMAG})
-                if(lpf == 0):
+                if(imulpf == 0 and oflpf == 0):
                     outCsv.to_csv(outFiles[i], index=False)
                 else:
-                    outCsv.to_csv(outFiles[i][:46] + 'alpha/' + str(int(lpf*100)) + outFiles[i][45:],index=False)        
+                    outCsv.to_csv(outFiles[i][:46] + 'alpha/imu-' +
+                                  str(int(imulpf*100)) + '_of-' + str(int(oflpf*100))
+                                  + outFiles[i][45:],index=False)        
             
         elif len(timing) == 3:
             net = []
@@ -849,10 +862,12 @@ def process(date, missions, times, live=False, lpf=0):
                                            'GPSMAG(FPR)':FPR_GPSMAG,
                                            'GPSMAG(TPR)':TPR_GPSMAG})
                 
-                if(lpf == 0):
+                if(imulpf == 0 and oflpf == 0):
                     outCsv.to_csv(outFiles[i], index=False)
                 else:
-                    outCsv.to_csv(outFiles[i][:46] + 'alpha/' + str(int(lpf*100)) + outFiles[i][45:], index=False)
+                    outCsv.to_csv(outFiles[i][:46] + 'alpha/imu-' +
+                                  str(int(imulpf*100)) + '_of-' + str(int(oflpf*100))
+                                  + outFiles[i][45:],index=False)  
 
 def main():
     # Simulation Data
@@ -888,9 +903,22 @@ def main():
                 [286066318,296066318,310068663]
         ]
     
-    for i in np.linspace(0, 1, 101):    
-        process(date, missions, times, live=True, lpf=i)
-
+    # process(date, missions, times, live=True)
+    oflpf_args = np.linspace(0, 1, 3)
+    imulpf_args = np.linspace(0, 1, 3)
+    combined = [(a, b) for a in oflpf_args for b in imulpf_args]
+    oflpf_args, imulpf_args = zip(*combined)
+    
+    start = time()
+    # I recommend anyone running this script to adjust the below Pool
+    # parameter for their system. Otherwise you may get a pagefile too small
+    # error
+    with Pool(8) as pool:
+        pool.starmap(process, zip(repeat(date), repeat(missions), repeat(times),
+                                  repeat(True), imulpf_args, oflpf_args))
+    end = time()
+    
+    print("Took " + str(int((end-start))) + " (s)")
 
 
     
