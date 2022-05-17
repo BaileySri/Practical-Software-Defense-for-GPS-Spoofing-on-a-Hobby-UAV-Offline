@@ -26,11 +26,19 @@ def process(date, missions, times, live=False, imulpf=0, oflpf=0):
     test_thresholds = 30
     tests = zip(missions, times)
     for name, timing in tests:
+        
         if(len(timing) == 3):
             dir_type = "Attack/"
         else:
             dir_type = "Benign/"
-        graphData = base + "/Results/" + dir_type + "GraphData/" + name[:-3] + "csv"
+        
+        if imulpf != 0 or oflpf != 0:
+            graphDataDir = base + "/Results/" + dir_type + "GraphData/alpha/imu-" + str(int(imulpf*100)) + '_of-' + str(int(oflpf * 100)) + "/"
+            Path(graphDataDir).mkdir(parents=True, exist_ok=True)
+            graphData = base + "/Results/" + dir_type + "GraphData/alpha/imu-" + str(int(imulpf*100)) + '_of-' + str(int(oflpf * 100)) + "/" + name[:-3] + "csv"
+        else:
+            graphData = base + "/Results/" + dir_type + "GraphData/" + name[:-3] + "csv"
+
         pairwiseData = base + "/Results/" + dir_type + "PairwiseData/" + name[:-4]
         files = []
         
@@ -618,12 +626,12 @@ def process(date, missions, times, live=False, imulpf=0, oflpf=0):
             for i in range(1,longest+1):
                 inter = np.array([0] * (len(CNF)-i+1))
                 for key, value in coverages['Net'].items():
-                    if(name.startswith("C-")):
-                        if(key == "GPSOF"): #Copter does not use GPSOF in Net
-                            continue
-                    elif(name.startswith("P-")):
-                        if(key == "ACCGPS"): #Plane does not use ACCGPS in Net
-                            continue
+                    # if(name.startswith("C-")):
+                    #     if(key == "GPSOF"): #Copter does not use GPSOF in Net
+                    #         continue
+                    # elif(name.startswith("P-")):
+                    #     if(key == "ACCGPS"): #Plane does not use ACCGPS in Net
+                    #         continue
                     if len(value) < i:
                         continue
                     inter = np.where(inter ==0, value[i], inter)
@@ -634,9 +642,9 @@ def process(date, missions, times, live=False, imulpf=0, oflpf=0):
             for i in range(1,longest+1):
                 inter = np.array([0] * (len(CNF)-i+1))
                 for key, value in coverages['GC'].items():
-                    if(name.startswith("P-")):
-                        if(key == "GPSMAG"): #Plane does not use GPSMAG
-                            continue
+                    # if(name.startswith("P-")):
+                    #     if(key == "GPSMAG"): #Plane does not use GPSMAG
+                    #         continue
                     if len(value) < i:
                         continue
                     inter = np.where(inter ==0, value[i], inter)
@@ -708,17 +716,17 @@ def process(date, missions, times, live=False, imulpf=0, oflpf=0):
             for i in range(1,longest+1):
                 inter = np.array([0] * (len(CNF)-i+1))
                 for key, value in coverages['Net'].items():
-                    if not live:
-                        if(name.startswith("C-")):
-                            if(key == "GPSOF"): #Sim Copter does not use GPSOF in Net
-                                continue
-                        elif(name.startswith("P-")):
-                            if(key == "ACCGPS"): #Sim Plane does not use ACCGPS in Net
-                                continue 
-                    else:
-                        if(name.startswith("C-")):
-                            if(key == "ACCGPS"): #Live Copter does not use ACCGPS in Net
-                                continue
+                    # if not live:
+                    #     if(name.startswith("C-")):
+                    #         if(key == "GPSOF"): #Sim Copter does not use GPSOF in Net
+                    #             continue
+                    #     elif(name.startswith("P-")):
+                    #         if(key == "ACCGPS"): #Sim Plane does not use ACCGPS in Net
+                    #             continue 
+                    # else:
+                    #     if(name.startswith("C-")):
+                    #         if(key == "ACCGPS"): #Live Copter does not use ACCGPS in Net
+                    #             continue
                     if len(value) < i:
                         continue
                     inter = np.where(inter ==0, value[i], inter)
@@ -837,6 +845,7 @@ def process(date, missions, times, live=False, imulpf=0, oflpf=0):
                             elif key == 'GPSOF':
                                 FPR_GPSOF = np.append(FPR_GPSOF, FPR/frames_benign)
                                 TPR_GPSOF = np.append(TPR_GPSOF, TPR/frames_attack)
+
                 # Match array lengths then output the csv
                 FPR_ACCOF = np.pad(FPR_ACCOF, (0, test_thresholds - len(FPR_ACCOF)), 'constant')
                 TPR_ACCOF = np.pad(TPR_ACCOF, (0, test_thresholds - len(TPR_ACCOF)), 'constant')
@@ -904,8 +913,8 @@ def main():
         ]
     
     # process(date, missions, times, live=True)
-    oflpf_args = np.linspace(0, 1, 3)
-    imulpf_args = np.linspace(0, 1, 3)
+    oflpf_args = np.linspace(0, 1, 51)
+    imulpf_args = np.linspace(0, 1, 51)
     combined = [(a, b) for a in oflpf_args for b in imulpf_args]
     oflpf_args, imulpf_args = zip(*combined)
     
@@ -916,6 +925,7 @@ def main():
     with Pool(8) as pool:
         pool.starmap(process, zip(repeat(date), repeat(missions), repeat(times),
                                   repeat(True), imulpf_args, oflpf_args))
+    # process(date, missions, times, True, 0.5, 0.5)
     end = time()
     
     print("Took " + str(int((end-start))) + " (s)")

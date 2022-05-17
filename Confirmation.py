@@ -9,11 +9,12 @@ Preface:
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from os import listdir, mkdir
+from os import listdir
 from sympy import sin, cos, pi, atan2, sqrt
+from pathlib import Path
 
-# Helper function to put together the CSVs generated for LPF testing
-def combine_csv(path):
+# Helper function to put together the FPR/TPR CSVs generated for LPF testing
+def combine_FPR_TPR_csv(path):
     tested_values = [2,   4,   6,   8,  10,  12,  14,  16,  18,  20,
             22,  24,  26,  28,  30,  32,  34,  36,  38,  40,  42,
             44,  46,  48,  50,  52,  54,  56,  57,  60,  62,  64,
@@ -27,19 +28,14 @@ def combine_csv(path):
     # Collecting a list of mission types in the folder
     Missions = listdir(path + 'Results/Benign/PairwiseData/alpha/' + BenignFiles[0])
     for i in range(len(Missions)):
-        Missions[i] = Missions[i].split('-')[1]
+        temp = Missions[i].split('-')
+        # Benign missions will always be format of "C||P-MissionName.csv"
+        Missions[i] = "-".join(temp[:2])
     Missions = np.unique(Missions)
     
     for i in range(len(Missions)):
         # Make combined directory
-        try:
-            mkdir(path + 'Results/Benign/PairwiseData/Combined/')
-        except:
-            pass
-        try:
-            mkdir(path + 'Results/Benign/PairwiseData/Combined/' + Missions[i])
-        except:
-            pass
+        Path(path + "Results/Benign/PairwiseData/Combined/" + Missions[i]).mkdir(parents=True, exist_ok=True)
         
         # Setting the columns to 2,4,6,..,100
         GPSOF_CSV = pd.DataFrame(columns=range(2,102,2))
@@ -89,19 +85,13 @@ def combine_csv(path):
     Missions = listdir(path + 'Results/Attack/PairwiseData/alpha/' + AttackFiles[0])
     for i in range(len(Missions)):
         temp = Missions[i].split('-')
-        Missions[i] = temp[1] + "-" + temp[2]
+        # Attack missions will always be format of "C||P-MissionName-Sensor.csv"
+        Missions[i] = "-".join(temp[:3])
     Missions = np.unique(Missions)
     
     for i in range(len(Missions)):
         # Make combined directory
-        try:
-            mkdir(path + 'Results/Attack/PairwiseData/Combined/')
-        except:
-            pass
-        try:
-            mkdir(path + 'Results/Attack/PairwiseData/Combined/' + Missions[i])
-        except:
-            pass
+        Path(path + "Results/Attack/PairwiseData/Combined/" + Missions[i]).mkdir(parents=True, exist_ok=True)
         
         # Setting the columns to 2,4,6,..,100
         GPSOF_FPR_CSV = pd.DataFrame(columns=range(2,102,2))
@@ -166,6 +156,64 @@ def combine_csv(path):
         GPSOF_TPR_CSV.to_csv(path + 'Results/Attack/PairwiseData/Combined/' + Missions[i] + '/GPSOF_TPR.csv',index=True)
         IMUOF_TPR_CSV.to_csv(path + 'Results/Attack/PairwiseData/Combined/' + Missions[i] + '/IMUOF_TPR.csv',index=True)
         IMUGPS_TPR_CSV.to_csv(path + 'Results/Attack/PairwiseData/Combined/' + Missions[i] + '/IMUGPS_TPR.csv',index=True)
+        
+def combine_TTD_csv(path):
+
+    tested_values = [2,   4,   6,   8,  10,  12,  14,  16,  18,  20,
+            22,  24,  26,  28,  30,  32,  34,  36,  38,  40,  42,
+            44,  46,  48,  50,  52,  54,  56,  57,  60,  62,  64,
+            66,  68,  70,  72,  74,  76,  78,  80,  82,  84,  86,
+            88,  90,  92,  94,  96,  98, 100]
+    
+    AttackFiles = listdir(path + 'Results/Attack/GraphData/alpha/')
+    
+    # Collecting a list of mission types in the folder
+    Missions = listdir(path + 'Results/Attack/GraphData/alpha/' + AttackFiles[0])
+    for i in range(len(Missions)):
+        temp = Missions[i].split('-')
+        # Attack missions will always be format of "C||P-MissionName-Sensor.csv"
+        Missions[i] = "-".join(temp[:3])[:-4] #Remove CSV part of name
+    Missions = np.unique(Missions)
+    
+    for i in range(len(Missions)):
+        # Make combined directory
+        Path(path + "Results/Attack/GraphData/Combined/" + Missions[i]).mkdir(parents=True, exist_ok=True)
+        
+        # Setting the columns to 2,4,6,..,100
+        TTD_CSV = pd.DataFrame(columns=range(2,102,2))
+        
+        # Populating them with dummy values for rows 1,2,...,50
+        for j in range(2,102,2):
+            TTD_CSV[j] =  [0.0] * 50
+        
+        # Replacing row index with 2,4,...,100
+        TTD_CSV.index = pd.RangeIndex(2, 102, 2)
+        
+        # During testing of 2,4,6,...,100, 58 got replaced with 57. Need to replace
+        # here to stay consistent
+        TTD_CSV.rename({58:57},axis=0,inplace=True)
+        TTD_CSV.rename({58:57},axis=1,inplace=True)
+        
+        for imu in tested_values:
+            for of in tested_values:
+                files = listdir(path + 'Results/Attack/GraphData/alpha/imu-' + str(imu) + "_of-" + str(of))
+            
+                # Only consolidating the Net results, matching on mission name and net
+                target = [match for match in files if Missions[i] in match]
+                temp = pd.read_csv(path + 'Results/Attack/GraphData/alpha/imu-' + str(imu) + "_of-" + str(of) + "/" + target[0])
+           
+                # Assign the data to a row,column named for the LPF value,
+                # Rows are the OF LPF value, Columns are the ACC LPF value
+                try:
+                    TTD = temp[temp['FPR']==0].iloc[0].TTD
+                except:
+                    # This implies FPR never reached 0
+                    TTD = -1.0
+                
+                
+                TTD_CSV.at[of, imu] = TTD
+        
+        TTD_CSV.to_csv(path + 'Results/Attack/GraphData/Combined/' + Missions[i] + '/TTD.csv', index=True)
 
 # Helper function to present plots of results    
 def graph_conf(ts, sig1, sig1_bound, sig2, sig2_bound, names=["sig1", "sig2"]):
@@ -375,7 +423,7 @@ def reduce_noise(df, rows):
 
 
 def main():
-    combine_csv('./Data/2022-05-01/')
+    combine_TTD_csv('./Data/2022-05-01/')
     
 if __name__ == "__main__":
     main()
