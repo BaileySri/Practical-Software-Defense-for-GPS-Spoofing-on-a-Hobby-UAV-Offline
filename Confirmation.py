@@ -157,7 +157,7 @@ def combine_FPR_TPR_csv(path):
         IMUOF_TPR_CSV.to_csv(path + 'Results/Attack/PairwiseData/Combined/' + Missions[i] + '/IMUOF_TPR.csv',index=True)
         IMUGPS_TPR_CSV.to_csv(path + 'Results/Attack/PairwiseData/Combined/' + Missions[i] + '/IMUGPS_TPR.csv',index=True)
         
-def combine_TTD_csv(path):
+def combine_system_TTD_csv(path):
 
     tested_values = [2,   4,   6,   8,  10,  12,  14,  16,  18,  20,
             22,  24,  26,  28,  30,  32,  34,  36,  38,  40,  42,
@@ -170,9 +170,8 @@ def combine_TTD_csv(path):
     # Collecting a list of mission types in the folder
     Missions = listdir(path + 'Results/Attack/GraphData/alpha/' + AttackFiles[0])
     for i in range(len(Missions)):
-        temp = Missions[i].split('-')
         # Attack missions will always be format of "C||P-MissionName-Sensor.csv"
-        Missions[i] = "-".join(temp[:3])[:-4] #Remove CSV part of name
+        Missions[i] = Missions[i][:-4] #Remove CSV part of name
     Missions = np.unique(Missions)
     
     for i in range(len(Missions)):
@@ -198,7 +197,7 @@ def combine_TTD_csv(path):
             for of in tested_values:
                 files = listdir(path + 'Results/Attack/GraphData/alpha/imu-' + str(imu) + "_of-" + str(of))
             
-                # Only consolidating the Net results, matching on mission name and net
+                # Only consolidating the Net results, matching on mission name
                 target = [match for match in files if Missions[i] in match]
                 temp = pd.read_csv(path + 'Results/Attack/GraphData/alpha/imu-' + str(imu) + "_of-" + str(of) + "/" + target[0])
            
@@ -214,6 +213,105 @@ def combine_TTD_csv(path):
                 TTD_CSV.at[of, imu] = TTD
         
         TTD_CSV.to_csv(path + 'Results/Attack/GraphData/Combined/' + Missions[i] + '/TTD.csv', index=True)
+        
+def combine_pairwise_TTD_csv(path):
+
+    tested_values = [2,   4,   6,   8,  10,  12,  14,  16,  18,  20,
+            22,  24,  26,  28,  30,  32,  34,  36,  38,  40,  42,
+            44,  46,  48,  50,  52,  54,  56,  57,  60,  62,  64,
+            66,  68,  70,  72,  74,  76,  78,  80,  82,  84,  86,
+            88,  90,  92,  94,  96,  98, 100]
+    
+    AttackFiles = listdir(path + 'Results/Attack/PairwiseData/alpha/')
+    
+    # Collecting a list of mission types in the folder
+    Missions = listdir(path + 'Results/Attack/PairwiseData/alpha/' + AttackFiles[0])
+    for i in range(len(Missions)):
+        # Attack missions will always be format of "C||P-MissionName-Sensor-Method.csv"
+        Missions[i] = Missions[i][:-4] #Remove CSV part of name
+    Missions = np.unique(Missions)
+    
+    for i in range(len(Missions)):
+        # Make combined directory
+        Path(path + "Results/Attack/PairwiseData/Combined/" + Missions[i]).mkdir(parents=True, exist_ok=True)
+        
+        # Setting the columns to 2,4,6,..,100
+        ACCOF_TTD_CSV = pd.DataFrame(columns=range(2,102,2))
+        GPSOF_TTD_CSV = pd.DataFrame(columns=range(2,102,2))
+        ACCGPS_TTD_CSV = pd.DataFrame(columns=range(2,102,2))
+        GPSMAG_TTD_CSV = pd.DataFrame(columns=range(2,102,2))
+        
+        # Populating them with dummy values for rows 1,2,...,50
+        for j in range(2,102,2):
+            ACCOF_TTD_CSV[j] =  [0.0] * 50
+            GPSOF_TTD_CSV[j] =  [0.0] * 50
+            ACCGPS_TTD_CSV[j] =  [0.0] * 50
+            GPSMAG_TTD_CSV[j] =  [0.0] * 50
+        
+        # Replacing row index with 2,4,...,100
+        ACCOF_TTD_CSV.index = pd.RangeIndex(2, 102, 2)
+        GPSOF_TTD_CSV.index = pd.RangeIndex(2, 102, 2)
+        ACCGPS_TTD_CSV.index = pd.RangeIndex(2, 102, 2)
+        GPSMAG_TTD_CSV.index = pd.RangeIndex(2, 102, 2)
+        
+        # During testing of 2,4,6,...,100, 58 got replaced with 57. Need to replace
+        # here to stay consistent
+        ACCOF_TTD_CSV.rename({58:57},axis=0,inplace=True)
+        ACCOF_TTD_CSV.rename({58:57},axis=1,inplace=True)
+        GPSOF_TTD_CSV.rename({58:57},axis=0,inplace=True)
+        GPSOF_TTD_CSV.rename({58:57},axis=1,inplace=True)
+        ACCGPS_TTD_CSV.rename({58:57},axis=0,inplace=True)
+        ACCGPS_TTD_CSV.rename({58:57},axis=1,inplace=True)
+        GPSMAG_TTD_CSV.rename({58:57},axis=0,inplace=True)
+        GPSMAG_TTD_CSV.rename({58:57},axis=1,inplace=True)
+        
+        for imu in tested_values:
+            for of in tested_values:
+                files = listdir(path + 'Results/Attack/PairwiseData/alpha/imu-' + str(imu) + "_of-" + str(of))
+            
+                # Only consolidating the Net results, matching on mission name
+                target = [match for match in files if Missions[i] in match]
+                temp = pd.read_csv(path + 'Results/Attack/PairwiseData/alpha/imu-' + str(imu) + "_of-" + str(of) + "/" + target[0])
+           
+                # Assign the data to a row,column named for the LPF value,
+                # Rows are the OF LPF value, Columns are the ACC LPF value
+                try:
+                    GPSOF_TTD = temp[temp['GPSOF(FPR)']==0].iloc[0].loc["GPSOF(TTD)"]
+                except:
+                    # This implies FPR never reached 0
+                    GPSOF_TTD = -1.0
+                
+                GPSOF_TTD_CSV.at[of, imu] = GPSOF_TTD
+                
+                if 'GC' in Missions[i]:
+                    try:
+                        GPSMAG_TTD = temp[temp['GPSMAG(FPR)']==0].iloc[0].loc["GPSMAG(TTD)"]
+                    except:
+                        # This implies FPR never reached 0
+                        GPSMAG_TTD = -1.0
+                    
+                    GPSMAG_TTD_CSV.at[of, imu] = GPSMAG_TTD
+                else:
+                    try:
+                        ACCOF_TTD = temp[temp['ACCOF(FPR)']==0].iloc[0].loc["ACCOF(TTD)"]
+                    except:
+                        # This implies FPR never reached 0
+                        ACCOF_TTD = -1.0
+                    try:
+                        ACCGPS_TTD = temp[temp['ACCGPS(FPR)']==0].iloc[0].loc["ACCGPS(TTD)"]
+                    except:
+                        # This implies FPR never reached 0
+                        ACCGPS_TTD = -1.0
+                    
+                    ACCOF_TTD_CSV.at[of, imu] = ACCOF_TTD
+                    ACCGPS_TTD_CSV.at[of, imu] = ACCGPS_TTD
+        
+        GPSOF_TTD_CSV.to_csv(path + 'Results/Attack/PairwiseData/Combined/' + Missions[i] + '/GPSOF_TTD.csv', index=True)
+        if 'GC' in Missions[i]:
+            GPSMAG_TTD_CSV.to_csv(path + 'Results/Attack/PairwiseData/Combined/' + Missions[i] + '/GPSMAG_TTD.csv', index=True)
+        else:
+            ACCOF_TTD_CSV.to_csv(path + 'Results/Attack/PairwiseData/Combined/' + Missions[i] + '/ACCOF_TTD.csv', index=True)
+            ACCGPS_TTD_CSV.to_csv(path + 'Results/Attack/PairwiseData/Combined/' + Missions[i] + '/ACCGPS_TTD.csv', index=True)
 
 # Helper function to present plots of results    
 def graph_conf(ts, sig1, sig1_bound, sig2, sig2_bound, names=["sig1", "sig2"]):
@@ -423,7 +521,9 @@ def reduce_noise(df, rows):
 
 
 def main():
-    combine_TTD_csv('./Data/2022-05-01/')
+    combine_pairwise_TTD_csv('./Data/2022-05-01/')
+    combine_system_TTD_csv('./Data/2022-05-01/')
+    combine_FPR_TPR_csv('./Data/2022-05-01/')
     
 if __name__ == "__main__":
     main()

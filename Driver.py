@@ -136,10 +136,10 @@ def process(date, missions, times, live=False, imulpf=0, oflpf=0):
         # Coverage where threshold = 1
         # The CNFs used here is not a typo, we are matching ACO
         # frames to CNF frames for coverage details later
-        coverages['3-Axis']['ACCOF'][1] = np.array([0] * len(CNF))
+        coverages['3Axis']['ACCOF'][1] = np.array([0] * len(CNF))
         for i in unions:
             try:
-                coverages['3-Axis']['ACCOF'][1][CNF[CNF.TimeUS > ACO.iloc[i].TimeUS].iloc[0].name] = ACO.iloc[i].TimeUS
+                coverages['3Axis']['ACCOF'][1][CNF[CNF.TimeUS > ACO.iloc[i].TimeUS].iloc[0].name] = ACO.iloc[i].TimeUS
             except IndexError:
                 continue
         res = ACO.iloc[unions]
@@ -154,7 +154,7 @@ def process(date, missions, times, live=False, imulpf=0, oflpf=0):
                 continue
             
         # Coverage testing of thresholds
-        conf_type = '3-Axis'
+        conf_type = '3Axis'
         conf_sensors = 'ACCOF'
         threshold = 2
         #Threshold loop
@@ -338,9 +338,9 @@ def process(date, missions, times, live=False, imulpf=0, oflpf=0):
         res = CNF.iloc[unions]
 
         # Coverage where threshold = 1
-        coverages['3-Axis']['ACCGPS'][1] = np.array([0] * len(CNF))
+        coverages['3Axis']['ACCGPS'][1] = np.array([0] * len(CNF))
         for i in res.index:
-            coverages['3-Axis']['ACCGPS'][1][i] = CNF.iloc[i].TimeUS
+            coverages['3Axis']['ACCGPS'][1][i] = CNF.iloc[i].TimeUS
 
         #Separating frames that are not useful for confirmation
         invalid = pd.DataFrame(columns=CNF.columns)
@@ -353,7 +353,7 @@ def process(date, missions, times, live=False, imulpf=0, oflpf=0):
                 continue
             
         # Coverage testing of thresholds
-        conf_type = '3-Axis'
+        conf_type = '3Axis'
         conf_sensors = 'ACCGPS'
         threshold = 2
         for x in range(2, test_thresholds+1):
@@ -450,9 +450,9 @@ def process(date, missions, times, live=False, imulpf=0, oflpf=0):
         res = CNF.iloc[unions]
         
         # Coverage where threshold = 1
-        coverages['3-Axis']['GPSOF'][1] = np.array([0] * len(CNF))
+        coverages['3Axis']['GPSOF'][1] = np.array([0] * len(CNF))
         for i in res.index:
-            coverages['3-Axis']['GPSOF'][1][i] = CNF.iloc[i].TimeUS
+            coverages['3Axis']['GPSOF'][1][i] = CNF.iloc[i].TimeUS
             
         #Separating frames that are not useful for confirmation
         invalid = pd.DataFrame(columns=CNF.columns)
@@ -464,7 +464,7 @@ def process(date, missions, times, live=False, imulpf=0, oflpf=0):
                 continue
 
         # Coverage testing of thresholds
-        conf_type = '3-Axis'
+        conf_type = '3Axis'
         conf_sensors = 'GPSOF'
         threshold = 2
         for x in range(2, test_thresholds+1):
@@ -612,10 +612,10 @@ def process(date, missions, times, live=False, imulpf=0, oflpf=0):
             # Benign data only cares about FPR
 
             #3D processing
-            longest = max(len(item) for item in coverages['3-Axis'].values())
+            longest = max(len(item) for item in coverages['3Axis'].values())
             for i in range(1,longest+1):
                 inter = np.array([0] * (len(CNF)-i+1))
-                for key, value in coverages['3-Axis'].items():
+                for key, value in coverages['3Axis'].items():
                     if len(value) < i:
                         continue
                     inter = np.where(inter ==0, value[i], inter)
@@ -662,7 +662,7 @@ def process(date, missions, times, live=False, imulpf=0, oflpf=0):
             
             # Output pairwise FPR data
             # Net, 3-Axis, and GC
-            suffixes = ['Net','3-Axis','GC']
+            suffixes = ['Net','3Axis','GC']
             outFiles = [pairwiseData + '-' + suffix + '.csv' for suffix in suffixes]
             for i in range(3):
                 ACCOF = np.array([], dtype=float)
@@ -711,6 +711,7 @@ def process(date, missions, times, live=False, imulpf=0, oflpf=0):
             gc = []
             # Adversarial data needs to calculate FPR and TPR for every THR 
             # Also needs to combine Net and GC data
+            
             #Scalar processing
             longest = max(len(item) for item in coverages['Net'].values())
             for i in range(1,longest+1):
@@ -729,6 +730,7 @@ def process(date, missions, times, live=False, imulpf=0, oflpf=0):
                     #             continue
                     if len(value) < i:
                         continue
+                    # Combine into a single array
                     inter = np.where(inter ==0, value[i], inter)
                 net.append(inter)
             
@@ -747,7 +749,8 @@ def process(date, missions, times, live=False, imulpf=0, oflpf=0):
                     inter = np.where(inter ==0, value[i], inter)
                 gc.append(inter)
             
-            # Match array lengths then output the csv
+            
+            # Match array lengths
             if len(net) > len(gc):
                 for i in range(len(gc),len(net)):
                     gc.append(np.array([0]*len(net[i])))                 
@@ -803,10 +806,10 @@ def process(date, missions, times, live=False, imulpf=0, oflpf=0):
                                'FPR': FPR,
                                'TPR': TPR,
                                'TTD': TTD}).to_csv(graphData,index=False)
-            
-            # Output pairwise FPR and TPR Data
+        
+            # Output pairwise FPR, TPR, and TTD Data
             # Net, 3-Axis, and GC
-            suffixes = ['Net','3-Axis','GC']
+            suffixes = ['Net','3Axis','GC']
             outFiles = [pairwiseData + '-' + suffix + '.csv' for suffix in suffixes]
             frames_benign = len(CNF[CNF.TimeUS < timing[1]])
             for i in range(3):
@@ -818,6 +821,10 @@ def process(date, missions, times, live=False, imulpf=0, oflpf=0):
                 TPR_GPSOF = np.array([], dtype=float)
                 TPR_ACCGPS = np.array([], dtype=float)
                 TPR_GPSMAG = np.array([], dtype=float)
+                TTD_ACCOF = np.array([], dtype=int)
+                TTD_GPSOF = np.array([], dtype=int)
+                TTD_ACCGPS = np.array([], dtype=int)
+                TTD_GPSMAG = np.array([], dtype=int)
                 for key, value in coverages[suffixes[i]].items():
                     for key2, value2 in value.items():
                         frames_attack = len(value2) - frames_benign
@@ -825,51 +832,82 @@ def process(date, missions, times, live=False, imulpf=0, oflpf=0):
                         FPR = np.where((value2 >= timing[0]) & (value2 <= timing[1]), 1, 0).sum()
                         #TPR
                         TPR = np.where((value2 >= timing[1]) & (value2 <= timing[2]), 1, 0).sum()
+                        #TTD
+                        TTD_idx = (value2 > timing[1]).argmax()
                         if(frames_attack == 0):
                             frames_attack = 1
                             TPR = -1
                         if(suffixes[i] != "GC"):
                             if key == 'ACCOF':
+                                if TTD_idx == 0:
+                                    TTD_ACCOF = np.append(TTD_ACCOF, 0)
+                                else:
+                                    TTD_ACCOF = np.append(TTD_ACCOF, int((value2[TTD_idx] - float(timing[1]))/1000.0))
                                 FPR_ACCOF = np.append(FPR_ACCOF, FPR/frames_benign)
                                 TPR_ACCOF = np.append(TPR_ACCOF, TPR/frames_attack)
                             elif key == 'GPSOF':
+                                if TTD_idx == 0:
+                                    TTD_GPSOF = np.append(TTD_GPSOF, 0)
+                                else:
+                                    TTD_GPSOF = np.append(TTD_GPSOF, int((value2[TTD_idx] - float(timing[1]))/1000.0))
                                 FPR_GPSOF = np.append(FPR_GPSOF, FPR/frames_benign)
                                 TPR_GPSOF = np.append(TPR_GPSOF, TPR/frames_attack)
                             elif key == 'ACCGPS':
+                                if TTD_idx == 0:
+                                    TTD_ACCGPS = np.append(TTD_ACCGPS, 0)
+                                else:
+                                    TTD_ACCGPS = np.append(TTD_ACCGPS, int((value2[TTD_idx] - float(timing[1]))/1000.0))
                                 FPR_ACCGPS = np.append(FPR_ACCGPS, FPR/frames_benign)
                                 TPR_ACCGPS = np.append(TPR_ACCGPS, TPR/frames_attack)
                         else:
                             if key == 'GPSMAG':
+                                if TTD_idx == 0:
+                                    TTD_GPSMAG = np.append(TTD_GPSMAG, 0)
+                                else:
+                                    TTD_GPSMAG = np.append(TTD_GPSMAG, int((value2[TTD_idx] - float(timing[1]))/1000.0))
                                 FPR_GPSMAG = np.append(FPR_GPSMAG, FPR/frames_benign)
                                 TPR_GPSMAG = np.append(TPR_GPSMAG, TPR/frames_attack)
                             elif key == 'GPSOF':
+                                if TTD_idx == 0:
+                                    TTD_GPSOF = np.append(TTD_GPSOF, 0)
+                                else:
+                                    TTD_GPSOF = np.append(TTD_GPSOF, int((value2[TTD_idx] - float(timing[1]))/1000.0))
                                 FPR_GPSOF = np.append(FPR_GPSOF, FPR/frames_benign)
                                 TPR_GPSOF = np.append(TPR_GPSOF, TPR/frames_attack)
 
                 # Match array lengths then output the csv
                 FPR_ACCOF = np.pad(FPR_ACCOF, (0, test_thresholds - len(FPR_ACCOF)), 'constant')
                 TPR_ACCOF = np.pad(TPR_ACCOF, (0, test_thresholds - len(TPR_ACCOF)), 'constant')
+                TTD_ACCOF = np.pad(TTD_ACCOF, (0, test_thresholds - len(TTD_ACCOF)), 'constant')
                 FPR_ACCGPS = np.pad(FPR_ACCGPS, (0, test_thresholds - len(FPR_ACCGPS)), 'constant')
                 TPR_ACCGPS = np.pad(TPR_ACCGPS, (0, test_thresholds - len(TPR_ACCGPS)), 'constant')
+                TTD_ACCGPS = np.pad(TTD_ACCGPS, (0, test_thresholds - len(TTD_ACCGPS)), 'constant')
                 FPR_GPSOF = np.pad(FPR_GPSOF, (0, test_thresholds - len(FPR_GPSOF)), 'constant')
                 TPR_GPSOF = np.pad(TPR_GPSOF, (0, test_thresholds - len(TPR_GPSOF)), 'constant')
+                TTD_GPSOF = np.pad(TTD_GPSOF, (0, test_thresholds - len(TTD_GPSOF)), 'constant')
                 FPR_GPSMAG = np.pad(FPR_GPSMAG, (0, test_thresholds - len(FPR_GPSMAG)), 'constant')
                 TPR_GPSMAG = np.pad(TPR_GPSMAG, (0, test_thresholds - len(TPR_GPSMAG)), 'constant')
+                TTD_GPSMAG = np.pad(TTD_GPSMAG, (0, test_thresholds - len(TTD_GPSMAG)), 'constant')
 
                 if suffixes[i] != "GC":
                     outCsv = pd.DataFrame(data={'Threshold': range(1,test_thresholds+1),
                                            'ACCOF(FPR)':FPR_ACCOF,
                                            'ACCOF(TPR)':TPR_ACCOF,
+                                           'ACCOF(TTD)':TTD_ACCOF,
                                            'GPSOF(FPR)':FPR_GPSOF,
                                            'GPSOF(TPR)':TPR_GPSOF,
+                                           'GPSOF(TTD)':TTD_GPSOF,
                                            'ACCGPS(FPR)':FPR_ACCGPS,
-                                           'ACCGPS(TPR)':TPR_ACCGPS})
+                                           'ACCGPS(TPR)':TPR_ACCGPS,
+                                           'ACCGPS(TTD)':TTD_ACCGPS})
                 else:
                     outCsv = pd.DataFrame(data={'Threshold': range(1,test_thresholds+1),
                                            'GPSOF(FPR)':FPR_GPSOF,
                                            'GPSOF(TPR)':TPR_GPSOF,
+                                           'GPSOF(TTD)':TTD_GPSOF,
                                            'GPSMAG(FPR)':FPR_GPSMAG,
-                                           'GPSMAG(TPR)':TPR_GPSMAG})
+                                           'GPSMAG(TPR)':TPR_GPSMAG,
+                                           'GPSMAG(TTD)':TTD_GPSOF})
                 
                 if(imulpf == 0 and oflpf == 0):
                     outCsv.to_csv(outFiles[i], index=False)
