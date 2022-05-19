@@ -72,7 +72,7 @@ def process(date, missions, times, live=False, imulpf=0, oflpf=0):
         if(not live):
             if not 'gpSA' in CNF.columns:
                 CNF['gpSA'] = 0.60 #60cm/s is what we expect for gpSA in live flight
-        coverages = {"3-Axis":{"ACCOF":{},"ACCGPS":{},"GPSOF":{}},
+        coverages = {"3Axis":{"ACCOF":{},"ACCGPS":{},"GPSOF":{}},
                      "Net"   :{"ACCOF":{},"ACCGPS":{},"GPSOF":{}},
                      "GC"    :{"GPSMAG":{}, "GPSOF":{}}}
         
@@ -945,7 +945,7 @@ def main():
                 "C-Idle-OF.txt"
         ]
     times = [
-                [121153010,193595505],
+                [121260000,193595505],
                 [264334818,274334818,291660048],
                 [286066318,296066318,310068663]
         ]
@@ -960,10 +960,10 @@ def main():
     # I recommend anyone running this script to adjust the below Pool
     # parameter for their system. Otherwise you may get a pagefile too small
     # error
-    with Pool(8) as pool:
-        pool.starmap(process, zip(repeat(date), repeat(missions), repeat(times),
-                                  repeat(True), imulpf_args, oflpf_args))
-    # process(date, missions, times, True, 0.5, 0.5)
+    # with Pool(8) as pool:
+    #     pool.starmap(process, zip(repeat(date), repeat(missions), repeat(times),
+    #                               repeat(True), imulpf_args, oflpf_args))
+    process(date, missions, times, True, 1.0, 0.2)
     end = time()
     
     print("Took " + str(int((end-start))) + " (s)")

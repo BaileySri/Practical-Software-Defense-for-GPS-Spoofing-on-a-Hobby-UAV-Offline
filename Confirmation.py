@@ -319,10 +319,17 @@ def graph_conf(ts, sig1, sig1_bound, sig2, sig2_bound, names=["sig1", "sig2"]):
     x = ts
     
     # First signal
-    plt.errorbar(x, sig1, yerr=sig1_bound, label=names[0])
+    plt.plot(x, sig1, label=names[0])
+    # Sig1 Error 1
+    plt.scatter(x, sig1 + abs(sig1_bound), marker='.', label='+'+names[0])
+    # Sig1 Error 2
+    plt.scatter(x, sig1 - abs(sig1_bound), marker='.', label='-'+names[0])
     
     # Second signal
-    plt.errorbar(x, sig2, yerr=sig2_bound, label=names[1])
+    plt.plot(x, sig2, label=names[1])
+    # Sig2 Error 1
+    plt.scatter(x, sig2 + abs(sig2_bound), marker='.', label='+'+names[1])
+    plt.scatter(x, sig2 - abs(sig2_bound), marker='.', label='-'+names[1])
     
     plt.legend(loc='lower right')
 
