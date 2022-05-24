@@ -332,6 +332,23 @@ def graph_conf(ts, sig1, sig1_bound, sig2, sig2_bound, names=["sig1", "sig2"]):
     plt.scatter(x, sig2 - abs(sig2_bound), marker='.', label='-'+names[1])
     
     plt.legend(loc='lower right')
+    
+def graph_dis_signals(ts, sig1, sig2, axlab=["Time (s)", "Disagreement (m/s)"], names=["Sig1", "Sig2"]):
+    fig = plt.figure()
+    x = ts
+    
+    plt.plot(x, sig1, label=names[0], color='blue')
+    plt.plot(x, sig2, label=names[1], color='red')
+    
+    plt.xlabel(axlab[0])
+    plt.ylabel(axlab[1])
+    
+    plt.legend()
+    
+    plt.fill_between(x, sig1, sig2, where=sig2>sig1, facecolor='red', alpha=0.2, interpolate=True)
+    plt.fill_between(x, sig1, sig2, where=sig2<=sig1, facecolor='blue', alpha=0.2, interpolate=True)
+    plt.plot(x, [0]*len(x), color="black")
+    
 
 # Just a wrapper to cast sympy atan2 to a float
 def arctan2(y, x):
@@ -436,6 +453,32 @@ def confirm(df, wrap=False):
                               }, ignore_index=True
                             )        
     return errors
+
+def boundary(df, wrap=False):
+    if(df.isnull().values.any()):
+        print("nan found in Confirmation:")
+        print(df.columns)
+        exit
+    if not wrap:
+        subset = df.copy(deep=True)
+        subset.loc[:, 'Off'] = subset.iloc[:, 1] - subset.iloc[:, 2]
+        subset.loc[:, 'Disagreement'] = subset.Off.cumsum()
+            
+    else:
+        subset = df.copy(deep=True)
+        subset.loc[:, 'Off'] = 0
+        for index, row in df.iterrows():
+            # If difference is less than 180, just use the difference
+            if abs(row.iloc[1] - row.iloc[2]) < 180:
+                subset.loc[index, 'Off'] = row.iloc[1] - row.iloc[2]
+            # Positive Result because row.iloc[1] < row.iloc[2] means more cw
+            elif row.iloc[1] < row.iloc[2]:
+                subset.loc[index, 'Off'] = 360 - (row.iloc[2] - row.iloc[1])
+            # Negative result because row.iloc[1] > row.iloc[2] means more ccw
+            elif row.iloc[2] <= row.iloc[1]:
+                subset.loc[index, 'Off'] = row.iloc[1] - row.iloc[2] - 360
+        subset.loc[:, 'Disagreement'] = subset.Off.cumsum()
+    return subset
 
 
 def yaw_from_mag_tc(magx, magy, magz, pitch, roll):
