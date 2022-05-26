@@ -5,7 +5,7 @@ Created on Wed Mar 17 09:38:16 2021
 @author: Bailey K. Srimoungchanh
 """
 from Confirmation import boundary, bf_to_ef, norm, reduce_noise
-from Confirmation import ToDeg, heading
+from Confirmation import ToDeg, heading, peak_compare
 from functools import reduce
 from math import sqrt, cos, tan
 import numpy as np
@@ -13,9 +13,8 @@ import pandas as pd
 from pathlib import Path
 from multiprocessing import Pool
 from itertools import repeat
-from time import time
-
-
+from time import time    
+    
 def process(date, missions, times, live=False, imulpf=0, oflpf=0):
     base = "./Data/" + date
     Path(base + "/Results/Attack/GraphData/").mkdir(parents=True, exist_ok=True)
@@ -118,74 +117,15 @@ def process(date, missions, times, live=False, imulpf=0, oflpf=0):
                 CNF.loc[index, "CAE"] = CNF.loc[index, "CAE"]*(imulpf) + CNF.loc[index-1, "CAE"]*(1-imulpf)
                 CNF.loc[index, "CAD"] = CNF.loc[index, "CAD"]*(imulpf) + CNF.loc[index-1, "CAD"]*(1-imulpf)
                 
-                
-        
 
-#---Accelerometer and OF---#
+#---IMU and OF---#
     #Velocity Change
     #3D
         North = pd.DataFrame(data = {'TimeUS':ACO['TimeUS'],'OF':ACO['COFN']-ACO['POFN'], 'Acc':ACO['CAN']})
         East = pd.DataFrame(data = {'TimeUS':ACO['TimeUS'],'OF':ACO['COFE']-ACO['POFE'], 'Acc':ACO['CAE']})
-        acc1 = boundary(North)
-        acc2 = boundary(East)
-        # unions = res1.index.union(res2.index)
-        
-        # # Coverage where threshold = 1
-        # # The CNFs used here is not a typo, we are matching ACO
-        # # frames to CNF frames for coverage details later
-        # coverages['3Axis']['ACCOF'][1] = np.array([0] * len(CNF))
-        # for i in unions:
-        #     try:
-        #         coverages['3Axis']['ACCOF'][1][CNF[CNF.TimeUS > ACO.iloc[i].TimeUS].iloc[0].name] = ACO.iloc[i].TimeUS
-        #     except IndexError:
-        #         continue
-        # res = ACO.iloc[unions]
-        
-        # #Separating frames that are not useful for confirmation
-        # invalid = pd.DataFrame(columns=ACO.columns)
-        # for index, row in ACO.iterrows():
-        #     if ((((row.COFN - row.POFN) <= (row.CNe + row.PNe)) and (row.CAN <= row.CAe)) and 
-        #         (((row.COFE - row.POFE) <= (row.CEe + row.PEe)) and (row.CAE <= row.CAe))):
-        #             invalid = invalid.append(row)
-        #     else:
-        #         continue
-            
-        # # Coverage testing of thresholds
-        # conf_type = '3Axis'
-        # conf_sensors = 'ACCOF'
-        # threshold = 2
-        # #Threshold loop
-        # for x in range(2, test_thresholds+1):
-        #     seq = [x for x in range(1,threshold)]
-        #     coverages[conf_type][conf_sensors][threshold] = np.array([0] * (len(CNF)-threshold+1))
-        #     #Results loop
-        #     for i in range(len(res.index)):
-        #         counter = 0
-        #         # check if index is outside all possible frames
-        #         if res.index[i] > (len(ACO) - threshold + 1):
-        #             break
-        #         # check if enough frames are left to confirm in ACO
-        #         if (len(res.index) - (i+threshold-1)) < threshold:
-        #             break
-        #         #Threshold check
-        #         for s in seq:
-        #             if res.index[i+s] == res.index[i]+s:
-        #                 counter += 1
-        #         # Marks a detected frame
-        #         if counter == len(seq):
-        #             frame_time = ACO.iloc[res.index[i+threshold-1]].TimeUS
-        #             # new_index maps the ACO timeslot to the CNF timeslot
-        #             new_index = CNF[CNF.TimeUS > frame_time].iloc[0].name
-        #             if (new_index >= len(coverages[conf_type][conf_sensors][threshold])):
-        #                 # This implies that we have ACO data pass the last CNF timeslot
-        #                 break
-        #             coverages[conf_type][conf_sensors][threshold][new_index] = frame_time
-        #     if(np.count_nonzero(coverages[conf_type][conf_sensors][threshold]) == 0):
-        #         break
-        #     threshold += 1
-        # # gaurantees an empty coverage when threshold of 2 detects nothing
-        # if len(coverages[conf_type][conf_sensors]) == 1:
-        #     coverages[conf_type][conf_sensors][2] = np.array([0] * (len(CNF)-1))
+        ACO_IMUOF_N = boundary(North)
+        ACO_IMUOF_E = boundary(East)
+
         
     #Scalar
         North = ACO['COFN'] - ACO['POFN']
@@ -194,59 +134,8 @@ def process(date, missions, times, live=False, imulpf=0, oflpf=0):
         IR = pd.DataFrame(data = {'TimeUS':ACO['TimeUS'],
                                    'OF':(pd.DataFrame(data = {"N":North, "E":East})).apply(norm, axis=1),
                                    'ACC':(ACO[['CAN','CAE']]).apply(norm,axis=1)})
-        acc3 = boundary(IR)
-        
-        # # Coverage where threshold = 1
-        # coverages['Net']['ACCOF'][1] = np.array([0] * len(CNF))
-        # for i in res.index:
-        #     try:
-        #         coverages['Net']['ACCOF'][1][CNF[CNF.TimeUS > ACO.iloc[i].TimeUS].iloc[0].name] = ACO.iloc[i].TimeUS
-        #     except IndexError:
-        #         continue
-        
-        # #Separating frames that are not useful for confirmation
-        # invalid = pd.DataFrame(columns=ACO.columns)
-        # for index, row in ACO.iterrows():
-        #     if (norm([row.COFN, row.COFE]) <= norm([row.CNe, row.CEe]) and
-        #         norm([row.CAN, row.CAE]) <= (sqrt(2) * row.CAe)):
-        #             invalid = invalid.append(row)
-        #     else:
-        #         continue
-            
-        # # Coverage testing of thresholds
-        # conf_type = 'Net'
-        # conf_sensors = 'ACCOF'
-        # threshold = 2
-        # for x in range(2, test_thresholds+1):
-        #     seq = [x for x in range(1,threshold)]
-        #     coverages[conf_type][conf_sensors][threshold] = np.array([0] * (len(CNF)-threshold+1))
-        #     for i in range(len(res.index)):
-        #         counter = 0
-        #         # check if index is outside all possible frames
-        #         if res.index[i] > (len(CNF) - threshold + 1):
-        #             break
-        #         # check if enough frames are left to confirm
-        #         if (len(res.index) - (i+threshold-1)) < threshold:
-        #             break
-        #         for s in seq:
-        #             if res.index[i+s] == res.index[i]+s:
-        #                 counter += 1
-        #         # Marks a detected frame
-        #         if counter == len(seq):
-        #             frame_time = ACO.iloc[res.index[i+threshold-1]].TimeUS
-        #             # new_index maps the ACO timeslot to the CNF timeslot
-        #             new_index = CNF[CNF.TimeUS > frame_time].iloc[0].name
-        #             if (new_index >= len(coverages[conf_type][conf_sensors][threshold])):
-        #                 # This implies that we have ACO data pass the last CNF timeslot
-        #                 break
-        #             coverages[conf_type][conf_sensors][threshold][new_index] = frame_time
-        #     if(np.count_nonzero(coverages[conf_type][conf_sensors][threshold]) == 0):
-        #         break
-        #     threshold += 1
-        # # gaurantees an empty coverage when threshold of 2 detects nothing
-        # if len(coverages[conf_type][conf_sensors]) == 1:
-        #     coverages[conf_type][conf_sensors][2] = np.array([0] * (len(CNF)-1))
-        
+        ACO_IMUOF_Scalar = boundary(IR)
+              
 
 #---GPS and Magnetometer---#
         #Mag GC
@@ -261,108 +150,18 @@ def process(date, missions, times, live=False, imulpf=0, oflpf=0):
 
         # Added IR below to make it easier to view variables when debugging
         IR = pd.DataFrame( data = {'TimeUS':CNF['TimeUS'],'MagGC':MagGC, 'GPSGC':GpsGC})
-        maggc1 = boundary(IR, wrap=True)
+        CNF_GPSMAG_GC = boundary(IR, wrap=True)
 
-        # # Coverage where threshold = 1
-        # coverages['GC']['GPSMAG'][1] = np.array([0] * len(CNF))
-        # for i in res.index:
-        #     coverages['GC']['GPSMAG'][1][CNF.index[CNF.TimeUS == res.iloc[i].TimeUS]] = CNF.iloc[CNF.index[CNF.TimeUS == res.iloc[i].TimeUS]].TimeUS
-
-        # #Separating frames that are not useful for confirmation
-        # invalid = pd.DataFrame(columns=CNF.columns)
-        # for index, row in CNF.iterrows():
-        #     if ((row.CGpN <= row.gpSA) or (row.CGpE <= row.gpSA)):
-        #             invalid = invalid.append(row)
-        #     else:
-        #         continue
-        
-        # # Coverage testing of thresholds
-        # conf_type = 'GC'
-        # conf_sensors = 'GPSMAG'
-        # threshold = 2
-        # for x in range(2, test_thresholds+1):
-        #     seq = [x for x in range(1,threshold)]
-        #     coverages[conf_type][conf_sensors][threshold] = np.array([0] * (len(CNF)-threshold+1))
-        #     for i in range(len(res.index)):
-        #         counter = 0
-        #         CNF_index = CNF.index[CNF.TimeUS == res.iloc[i].TimeUS]
-        #         # check if index is outside all possible frames
-        #         if CNF_index > (len(CNF) - threshold + 1):
-        #             break
-        #         # check if enough frames are left to confirm
-        #         if (len(res.index) - (i+threshold-1)) < threshold:
-        #             break
-        #         for s in seq:
-        #             if CNF_index+s == CNF.index[CNF.TimeUS == res.iloc[i+s].TimeUS]:
-        #                 counter += 1
-        #         # Marks a detected frame
-        #         if counter == len(seq):
-        #             coverages[conf_type][conf_sensors][threshold][CNF_index+threshold-1] = CNF.iloc[CNF_index+threshold-1].TimeUS
-        #     if(np.count_nonzero(coverages[conf_type][conf_sensors][threshold]) == 0):
-        #         break
-        #     threshold += 1
-        # # gaurantees an empty coverage when threshold of 2 detects nothing
-        # if len(coverages[conf_type][conf_sensors]) == 1:
-        #     coverages[conf_type][conf_sensors][2] = np.array([0] * (len(CNF)-1))
 
 #---Accelerometer and GPS---#
     #3D
-        # Important assumption here about the GPS Speed Accuracy
-        # We don't assume that the absolute GPS position has good accuracy but 
-        # does have good precision and that the relative change in position
-        # being measured by the gps is accurate enough to use the Speed Accuracy
         North = pd.DataFrame(data = {'TimeUS':CNF['TimeUS'],'GPS':CNF['CGpN']-CNF['PGpN'],'Acc':CNF['CAN']})
         East = pd.DataFrame(data = {'TimeUS':CNF['TimeUS'],'GPS':CNF['CGpE']-CNF['PGpE'],'Acc':CNF['CAE'],})
         Down = pd.DataFrame(data = {'TimeUS':CNF['TimeUS'],'GPS':CNF['CGpD']-CNF['PGpD'],'Acc':CNF['CAD']})
-        accgps1 = boundary(North)
-        accgps2 = boundary(East)
-        accgps3 = boundary(Down)
-        # unions = res1.index.union(res2.index).union(res3.index)
-        # res = CNF.iloc[unions]
+        CNF_IMUGPS_N = boundary(North)
+        CNF_IMUGPS_E = boundary(East)
+        CNF_IMUGPS_D = boundary(Down)
 
-        # # Coverage where threshold = 1
-        # coverages['3Axis']['ACCGPS'][1] = np.array([0] * len(CNF))
-        # for i in res.index:
-        #     coverages['3Axis']['ACCGPS'][1][i] = CNF.iloc[i].TimeUS
-
-        # #Separating frames that are not useful for confirmation
-        # invalid = pd.DataFrame(columns=CNF.columns)
-        # for index, row in CNF.iterrows():
-        #     if ((((row.CGpN - row.PGpN) <= (row.gpSA)) and (row.CAN <= row.CAe)) and 
-        #         (((row.CGpE - row.PGpE) <= (row.gpSA)) and (row.CAE <= row.CAe)) and
-        #         (((row.CGpD - row.PGpD) <= (row.gpSA)) and (row.CAD <= row.CAe))):
-        #             invalid = invalid.append(row)
-        #     else:
-        #         continue
-            
-        # # Coverage testing of thresholds
-        # conf_type = '3Axis'
-        # conf_sensors = 'ACCGPS'
-        # threshold = 2
-        # for x in range(2, test_thresholds+1):
-        #     seq = [x for x in range(1,threshold)]
-        #     coverages[conf_type][conf_sensors][threshold] = np.array([0] * (len(CNF)-threshold+1))
-        #     for i in range(len(res.index)):
-        #         counter = 0
-        #         CNF_index = CNF.index[CNF.TimeUS == res.iloc[i].TimeUS]
-        #         # check if index is outside all possible frames
-        #         if CNF_index > (len(CNF) - threshold + 1):
-        #             break
-        #         # check if enough frames are left to confirm
-        #         if (len(res.index) - (i+threshold-1)) < threshold:
-        #             break
-        #         for s in seq:
-        #             if CNF_index+s == CNF.index[CNF.TimeUS == res.iloc[i+s].TimeUS]:
-        #                 counter += 1
-        #         # Marks a detected frame
-        #         if counter == len(seq):
-        #             coverages[conf_type][conf_sensors][threshold][CNF_index+threshold-1] = CNF.iloc[CNF_index+threshold-1].TimeUS
-        #     if(np.count_nonzero(coverages[conf_type][conf_sensors][threshold]) == 0):
-        #         break
-        #     threshold += 1
-        # # gaurantees an empty coverage when threshold of 2 detects nothing
-        # if len(coverages[conf_type][conf_sensors]) == 1:
-        #     coverages[conf_type][conf_sensors][2] = np.array([0] * (len(CNF)-1))
                 
     #Scalar
         North = CNF['CGpN'] - CNF['PGpN']
@@ -371,151 +170,21 @@ def process(date, missions, times, live=False, imulpf=0, oflpf=0):
         IR = pd.DataFrame(data = {'TimeUS':CNF['TimeUS'],
                                    'GPS':(pd.DataFrame(data ={'N':North, 'E':East, 'D':Down})).apply(norm, axis=1),
                                    'ACC':(CNF[['CAN','CAE','CAD']]).apply(norm,axis=1)})
-        accgps4 = boundary(IR)
-        
-        # # Coverage where threshold = 1
-        # coverages['Net']['ACCGPS'][1] = np.array([0] * len(CNF))
-        # for i in res.index:
-        #     coverages['Net']['ACCGPS'][1][i] = CNF.iloc[i].TimeUS
-            
-        # #Separating frames that are not useful for confirmation
-        # invalid = pd.DataFrame(columns=CNF.columns)
-        # for index, row in CNF.iterrows():
-        #     if (norm([row.CGpN, row.CGpE, row.CGpD]) <= (row.gpSA) and
-        #         norm([row.CAN, row.CAE, row.CAD]) <= (sqrt(3) * row.CAe)):
-        #             invalid = invalid.append(row)
-        #     else:
-        #         continue
-            
-        # # Coverage testing of thresholds
-        # conf_type = 'Net'
-        # conf_sensors = 'ACCGPS'
-        # threshold = 2
-        # for x in range(2, test_thresholds+1):
-        #     seq = [x for x in range(1,threshold)]
-        #     coverages[conf_type][conf_sensors][threshold] = np.array([0] * (len(CNF)-threshold+1))
-        #     for i in range(len(res.index)):
-        #         counter = 0
-        #         CNF_index = CNF.index[CNF.TimeUS == res.iloc[i].TimeUS]
-        #         # check if index is outside all possible frames
-        #         if CNF_index > (len(CNF) - threshold + 1):
-        #             break
-        #         # check if enough frames are left to confirm
-        #         if (len(res.index) - (i+threshold-1)) < threshold:
-        #             break
-        #         for s in seq:
-        #             if CNF_index+s == CNF.index[CNF.TimeUS == res.iloc[i+s].TimeUS]:
-        #                 counter += 1
-        #         # Marks a detected frame
-        #         if counter == len(seq):
-        #             coverages[conf_type][conf_sensors][threshold][CNF_index+threshold-1] = CNF.iloc[CNF_index+threshold-1].TimeUS
-        #     if(np.count_nonzero(coverages[conf_type][conf_sensors][threshold]) == 0):
-        #         break
-        #     threshold += 1
-        # # gaurantees an empty coverage when threshold of 2 detects nothing
-        # if len(coverages[conf_type][conf_sensors]) == 1:
-        #     coverages[conf_type][conf_sensors][2] = np.array([0] * (len(CNF)-1))
+        CNF_IMUGPS_Scalar = boundary(IR)
 
 #---GPS and OF---#
     #3D
         North = pd.DataFrame(data = {'TimeUS':CNF['TimeUS'],'GPS':CNF['CGpN'],'OF':CNF['COFN']})
         East = pd.DataFrame(data = {'TimeUS':CNF['TimeUS'],'GPS':CNF['CGpE'],'OF':CNF['COFE']})
-        gpsof1 = boundary(North)
-        gpsof2 = boundary(East)
-        # unions = res1.index.union(res2.index)
-        # res = CNF.iloc[unions]
-        
-        # # Coverage where threshold = 1
-        # coverages['3Axis']['GPSOF'][1] = np.array([0] * len(CNF))
-        # for i in res.index:
-        #     coverages['3Axis']['GPSOF'][1][i] = CNF.iloc[i].TimeUS
-            
-        # #Separating frames that are not useful for confirmation
-        # invalid = pd.DataFrame(columns=CNF.columns)
-        # for index, row in CNF.iterrows():
-        #     if (((row.CGpN <= row.gpSA) and (row.COFN <= row.CNe)) and 
-        #         ((row.CGpE <= row.gpSA) and (row.COFE <= row.CEe))):
-        #             invalid = invalid.append(row)
-        #     else:
-        #         continue
-
-        # # Coverage testing of thresholds
-        # conf_type = '3Axis'
-        # conf_sensors = 'GPSOF'
-        # threshold = 2
-        # for x in range(2, test_thresholds+1):
-        #     seq = [x for x in range(1,threshold)]
-        #     coverages[conf_type][conf_sensors][threshold] = np.array([0] * (len(CNF)-threshold+1))
-        #     for i in range(len(res.index)):
-        #         counter = 0
-        #         CNF_index = CNF.index[CNF.TimeUS == res.iloc[i].TimeUS]
-        #         # check if index is outside all possible frames
-        #         if CNF_index > (len(CNF) - threshold + 1):
-        #             break
-        #         # check if enough frames are left to confirm
-        #         if (len(res.index) - (i+threshold-1)) < threshold:
-        #             break
-        #         for s in seq:
-        #             if CNF_index+s == CNF.index[CNF.TimeUS == res.iloc[i+s].TimeUS]:
-        #                 counter += 1
-        #         # Marks a detected frame
-        #         if counter == len(seq):
-        #             coverages[conf_type][conf_sensors][threshold][CNF_index+threshold-1] = CNF.iloc[CNF_index+threshold-1].TimeUS
-        #     if(np.count_nonzero(coverages[conf_type][conf_sensors][threshold]) == 0):
-        #         break
-        #     threshold += 1
-        # # gaurantees an empty coverage when threshold of 2 detects nothing
-        # if len(coverages[conf_type][conf_sensors]) == 1:
-        #     coverages[conf_type][conf_sensors][2] = np.array([0] * (len(CNF)-1))
+        CNF_GPSOF_N = boundary(North)
+        CNF_GPSOF_E = boundary(East)
 
     #Scalar
         IR = pd.DataFrame(data = {'TimeUS':CNF['TimeUS'],
                                            'OF':(CNF[['COFN','COFE']]).apply(norm, axis=1),
                                            'GPS':(CNF[['CGpN','CGpE']]).apply(norm,axis=1)})
+        CNF_GPSOF_Scalar = boundary(IR)
         
-        # # Coverage where threshold = 1
-        # coverages['Net']['GPSOF'][1] = np.array([0] * len(CNF))
-        # for i in res.index:
-        #     coverages['Net']['GPSOF'][1][i] = CNF.iloc[i].TimeUS
-
-        # #Separating frames that are not useful for confirmation
-        # invalid = pd.DataFrame(columns=CNF.columns)
-        # for index, row in CNF.iterrows():
-        #     if (norm([row.COFN, row.COFE]) <= norm([row.CNe, row.CEe]) and
-        #         norm([row.CGpN, row.CGpE]) <= (row.gpSA)):
-        #             invalid = invalid.append(row)
-        #     else:
-        #         continue
-    
-        # # Coverage testing of thresholds
-        # conf_type = 'Net'
-        # conf_sensors = 'GPSOF'
-        # threshold = 2
-        # for x in range(2, test_thresholds+1):
-        #     seq = [x for x in range(1,threshold)]
-        #     coverages[conf_type][conf_sensors][threshold] = np.array([0] * (len(CNF)-threshold+1))
-        #     for i in range(len(res.index)):
-        #         counter = 0
-        #         CNF_index = CNF.index[CNF.TimeUS == res.iloc[i].TimeUS]
-        #         # check if index is outside all possible frames
-        #         if CNF_index > (len(CNF) - threshold + 1):
-        #             break
-        #         # check if enough frames are left to confirm
-        #         if (len(res.index) - (i+threshold-1)) < threshold:
-        #             break
-        #         for s in seq:
-        #             if CNF_index+s == CNF.index[CNF.TimeUS == res.iloc[i+s].TimeUS]:
-        #                 counter += 1
-        #         # Marks a detected frame
-        #         if counter == len(seq):
-        #             coverages[conf_type][conf_sensors][threshold][CNF_index+threshold-1] = CNF.iloc[CNF_index+threshold-1].TimeUS
-        #     if(np.count_nonzero(coverages[conf_type][conf_sensors][threshold]) == 0):
-        #         break
-        #     threshold += 1
-        # # gaurantees an empty coverage when threshold of 2 detects nothing
-        # if len(coverages[conf_type][conf_sensors]) == 1:
-        #     coverages[conf_type][conf_sensors][2] = np.array([0] * (len(CNF)-1))
-
     #Ground Course
         dot = CNF[['COFN']]
         det = -CNF[['COFE']]
@@ -525,362 +194,11 @@ def process(date, missions, times, live=False, imulpf=0, oflpf=0):
         IR = pd.DataFrame( data = {'TimeUS':CNF['TimeUS'],
                                             'OFGC':OFGC,
                                             'GPSGC':GpsGC})
-        gpsof4 = boundary(IR, wrap=True)
+        CNF_GPSOF_GC = boundary(IR, wrap=True)
+        if len(timing) > 2:
+            xaxis = np.arange(1, 31, 1)
+            yaxis = [peak_compare(ACO_IMUOF_N, timing, x) for x in xaxis]
         
-        # # Coverage where threshold = 1
-        # coverages['GC']['GPSOF'][1] = np.array([0] * len(CNF))
-        # for i in res.index:
-        #     coverages['GC']['GPSOF'][1][CNF.index[CNF.TimeUS == res.iloc[i].TimeUS]] = CNF.iloc[CNF.index[CNF.TimeUS == res.iloc[i].TimeUS]].TimeUS
-
-        # #Separating frames that are not useful for confirmation
-        # invalid = pd.DataFrame(columns=CNF.columns)
-        # for index, row in CNF.iterrows():
-        #     if ((norm([row.CGpN, row.CGpE]) <= (row.gpSA)) and
-        #         (norm([row.COFN, row.COFE]) <= (norm([row.CNe, row.CEe])))):
-        #             invalid = invalid.append(row)
-        #     else:
-        #         continue
-        
-        # # Coverage testing of thresholds
-        # conf_type = 'GC'
-        # conf_sensors = 'GPSOF'
-        # threshold = 2
-        # for x in range(2, test_thresholds+1):
-        #     seq = [x for x in range(1,threshold)]
-        #     coverages[conf_type][conf_sensors][threshold] = np.array([0] * (len(CNF)-threshold+1))
-        #     for i in range(len(res.index)):
-        #         counter = 0
-        #         CNF_index = CNF.index[CNF.TimeUS == res.iloc[i].TimeUS]
-        #         # check if index is outside all possible frames
-        #         if CNF_index > (len(CNF) - threshold + 1):
-        #             break
-        #         # check if enough frames are left to confirm
-        #         if (len(res.index) - (i+threshold-1)) < threshold:
-        #             break
-        #         for s in seq:
-        #             if CNF_index+s == CNF.index[CNF.TimeUS == res.iloc[i+s].TimeUS]:
-        #                 counter += 1
-        #         # Marks a detected frame
-        #         if counter == len(seq):
-        #             coverages[conf_type][conf_sensors][threshold][CNF_index+threshold-1] = CNF.iloc[CNF_index+threshold-1].TimeUS
-        #     if(np.count_nonzero(coverages[conf_type][conf_sensors][threshold]) == 0):
-        #         break
-        #     threshold += 1
-        # # gaurantees an empty coverage when threshold of 2 detects nothing
-        # if len(coverages[conf_type][conf_sensors]) == 1:
-        #     coverages[conf_type][conf_sensors][2] = np.array([0] * (len(CNF)-1))
-            
-        # ROC information
-        if len(timing) == 2:
-            triaxis = []
-            net = []
-            gc = []
-            # Benign data only cares about FPR
-
-            #3D processing
-            longest = max(len(item) for item in coverages['3Axis'].values())
-            for i in range(1,longest+1):
-                inter = np.array([0] * (len(CNF)-i+1))
-                for key, value in coverages['3Axis'].items():
-                    if len(value) < i:
-                        continue
-                    inter = np.where(inter ==0, value[i], inter)
-                triaxis = np.append(triaxis, np.count_nonzero(inter)/len(inter))
-                
-            #Scalar processing
-            longest = max(len(item) for item in coverages['Net'].values())
-            for i in range(1,longest+1):
-                inter = np.array([0] * (len(CNF)-i+1))
-                for key, value in coverages['Net'].items():
-                    # if(name.startswith("C-")):
-                    #     if(key == "GPSOF"): #Copter does not use GPSOF in Net
-                    #         continue
-                    # elif(name.startswith("P-")):
-                    #     if(key == "ACCGPS"): #Plane does not use ACCGPS in Net
-                    #         continue
-                    if len(value) < i:
-                        continue
-                    inter = np.where(inter ==0, value[i], inter)
-                net = np.append(net, np.count_nonzero(inter)/len(inter))
-                
-            #GC processing
-            longest = max(len(item) for item in coverages['GC'].values())
-            for i in range(1,longest+1):
-                inter = np.array([0] * (len(CNF)-i+1))
-                for key, value in coverages['GC'].items():
-                    # if(name.startswith("P-")):
-                    #     if(key == "GPSMAG"): #Plane does not use GPSMAG
-                    #         continue
-                    if len(value) < i:
-                        continue
-                    inter = np.where(inter ==0, value[i], inter)
-                gc = np.append(gc, np.count_nonzero(inter)/len(inter))
-                
-            # Match array lengths then output the csv
-            gc = np.pad(gc, (0, test_thresholds - len(gc)), 'constant')
-            net = np.pad(net, (0, test_thresholds - len(net)), 'constant')
-            triaxis = np.pad(triaxis, (0, test_thresholds - len(triaxis)), 'constant')
-            pd.DataFrame(data={'THR':list(range(1,len(net)+1)),
-                               'Frames':np.flip(np.array(list(range(len(CNF)-len(gc)+1,len(CNF)+1)))),
-                               'Tri-Axis FPR':triaxis,
-                               'Net FPR': net,
-                               'GC FPR':gc}).to_csv(graphData,index=False)
-            
-            # Output pairwise FPR data
-            # Net, 3-Axis, and GC
-            suffixes = ['Net','3Axis','GC']
-            outFiles = [pairwiseData + '-' + suffix + '.csv' for suffix in suffixes]
-            for i in range(3):
-                ACCOF = np.array([], dtype=float)
-                GPSOF = np.array([], dtype=float)
-                ACCGPS = np.array([], dtype=float)
-                GPSMAG = np.array([], dtype=float)
-                for key, value in coverages[suffixes[i]].items():
-                    for key2, value2 in value.items():
-                        if suffixes[i] != "GC":
-                            if key == 'ACCOF':
-                                ACCOF = np.append(ACCOF, np.count_nonzero(value2)/len(value2))
-                            elif key == 'GPSOF':
-                                GPSOF = np.append(GPSOF, np.count_nonzero(value2)/len(value2))
-                            elif key == 'ACCGPS':
-                                ACCGPS = np.append(ACCGPS, np.count_nonzero(value2)/len(value2))
-                        else:
-                            if key == 'GPSMAG':
-                                GPSMAG = np.append(GPSMAG, np.count_nonzero(value2)/len(value2))
-                            elif key == 'GPSOF':
-                                GPSOF = np.append(GPSOF, np.count_nonzero(value2)/len(value2))
-                            
-                # Match array lengths then output the csv
-                GPSOF = np.pad(GPSOF, (0, test_thresholds - len(GPSOF)), 'constant')
-                ACCOF = np.pad(ACCOF, (0, test_thresholds - len(ACCOF)), 'constant')
-                ACCGPS = np.pad(ACCGPS, (0, test_thresholds - len(ACCGPS)), 'constant')
-                GPSMAG = np.pad(GPSMAG, (0, test_thresholds - len(GPSMAG)), 'constant')
-                
-                if suffixes[i] != "GC":
-                    outCsv = pd.DataFrame(data={'Threshold': range(1,test_thresholds+1),
-                                           'ACCOF(FPR)':ACCOF,
-                                           'GPSOF(FPR)':GPSOF,
-                                           'ACCGPS(FPR)':ACCGPS})
-                else:
-                    outCsv = pd.DataFrame(data={'Threshold': range(1,test_thresholds+1),
-                                           'GPSOF(FPR)':GPSOF,
-                                           'GPSMAG(FPR)':GPSMAG})
-                if(imulpf == 0 and oflpf == 0):
-                    outCsv.to_csv(outFiles[i], index=False)
-                else:
-                    outCsv.to_csv(outFiles[i][:46] + 'alpha/imu-' +
-                                  str(int(imulpf*100)) + '_of-' + str(int(oflpf*100))
-                                  + outFiles[i][45:],index=False)        
-            
-        elif len(timing) == 3:
-            net = []
-            gc = []
-            # Adversarial data needs to calculate FPR and TPR for every THR 
-            # Also needs to combine Net and GC data
-            
-            #Scalar processing
-            longest = max(len(item) for item in coverages['Net'].values())
-            for i in range(1,longest+1):
-                inter = np.array([0] * (len(CNF)-i+1))
-                for key, value in coverages['Net'].items():
-                    # if not live:
-                    #     if(name.startswith("C-")):
-                    #         if(key == "GPSOF"): #Sim Copter does not use GPSOF in Net
-                    #             continue
-                    #     elif(name.startswith("P-")):
-                    #         if(key == "ACCGPS"): #Sim Plane does not use ACCGPS in Net
-                    #             continue 
-                    # else:
-                    #     if(name.startswith("C-")):
-                    #         if(key == "ACCGPS"): #Live Copter does not use ACCGPS in Net
-                    #             continue
-                    if len(value) < i:
-                        continue
-                    # Combine into a single array
-                    inter = np.where(inter ==0, value[i], inter)
-                net.append(inter)
-            
-            #GC processing
-            longest = max(len(item) for item in coverages['GC'].values())
-            for i in range(1,longest+1):
-                inter = np.array([0] * (len(CNF)-i+1))
-                for key, value in coverages['GC'].items():
-                    continue
-                    if live:
-                        if(name.startswith("C-")):
-                            if(key == "GPSMAG"): #Live Copter does not use GPSMAG in GC
-                                continue
-                    if len(value) < i:
-                        continue
-                    inter = np.where(inter ==0, value[i], inter)
-                gc.append(inter)
-            
-            
-            # Match array lengths
-            if len(net) > len(gc):
-                for i in range(len(gc),len(net)):
-                    gc.append(np.array([0]*len(net[i])))                 
-            elif len(gc) > len(net):
-                for i in range(len(net),len(gc)):
-                    net.append(np.array([0]*len(gc[i])))
-            gc = np.array(gc,dtype=object)
-            net = np.array(net,dtype=object)
-            
-            # Storing combined results in GC array
-            if 'Stealth' not in name:
-                for i in range(len(gc)):
-                    gc[i] = np.where(gc[i] == 0, net[i], gc[i])
-            else:
-                gc = net #Stealthy attack only considers Net, replacing gc with net data
-                
-            # Calculate system-wise FPR and TPR
-            FPR = np.array([], dtype=float)
-            TPR = np.array([], dtype=float)
-            TTD = np.array([0] * len(gc))
-            for i in range(len(gc)): # Number of thresholds
-                FP = 0
-                FN = 0
-                TP = 0
-                TN = 0
-                for s in range(len(gc[i])): # Frames in threshold array
-                    if TTD[i] == 0 and gc[i][s] >= timing[1]:
-                        TTD[i] = (gc[i][s] - float(timing[1]))/1000.0
-                    # False Negative check
-                    if CNF.iloc[s].TimeUS >= timing[1]:
-                        if gc[i][s] == 0:
-                            FN += 1
-                        else:
-                            TP += 1
-                    # False Positive check
-                    elif CNF.iloc[s].TimeUS < timing[1]:
-                        if gc[i][s] != 0:
-                            FP += 1
-                        else:
-                            TN += 1
-                if FP + TN == 0:
-                    FPR = np.append(FPR, -1)
-                else:
-                    FPR = np.append(FPR, FP/(FP+TN))
-                if TP + FN == 0:
-                    # I have only seen this occur when the stealthy attack has no room
-                    TPR = np.append(TPR, -1)
-                else:
-                    TPR = np.append(TPR, TP/(TP+FN))
-                
-            pd.DataFrame(data={'THR':list(range(1,len(gc)+1)),
-                               'Frames':np.flip(np.array(list(range(len(CNF)-len(gc)+1,len(CNF)+1)))),
-                               'FPR': FPR,
-                               'TPR': TPR,
-                               'TTD': TTD}).to_csv(graphData,index=False)
-        
-            # Output pairwise FPR, TPR, and TTD Data
-            # Net, 3-Axis, and GC
-            suffixes = ['Net','3Axis','GC']
-            outFiles = [pairwiseData + '-' + suffix + '.csv' for suffix in suffixes]
-            frames_benign = len(CNF[CNF.TimeUS < timing[1]])
-            for i in range(3):
-                FPR_ACCOF = np.array([], dtype=float)
-                FPR_GPSOF = np.array([], dtype=float)
-                FPR_ACCGPS = np.array([], dtype=float)
-                FPR_GPSMAG = np.array([], dtype=float)
-                TPR_ACCOF = np.array([], dtype=float)
-                TPR_GPSOF = np.array([], dtype=float)
-                TPR_ACCGPS = np.array([], dtype=float)
-                TPR_GPSMAG = np.array([], dtype=float)
-                TTD_ACCOF = np.array([], dtype=int)
-                TTD_GPSOF = np.array([], dtype=int)
-                TTD_ACCGPS = np.array([], dtype=int)
-                TTD_GPSMAG = np.array([], dtype=int)
-                for key, value in coverages[suffixes[i]].items():
-                    for key2, value2 in value.items():
-                        frames_attack = len(value2) - frames_benign
-                        #FPR
-                        FPR = np.where((value2 >= timing[0]) & (value2 <= timing[1]), 1, 0).sum()
-                        #TPR
-                        TPR = np.where((value2 >= timing[1]) & (value2 <= timing[2]), 1, 0).sum()
-                        #TTD
-                        TTD_idx = (value2 > timing[1]).argmax()
-                        if(frames_attack == 0):
-                            frames_attack = 1
-                            TPR = -1
-                        if(suffixes[i] != "GC"):
-                            if key == 'ACCOF':
-                                if TTD_idx == 0:
-                                    TTD_ACCOF = np.append(TTD_ACCOF, 0)
-                                else:
-                                    TTD_ACCOF = np.append(TTD_ACCOF, int((value2[TTD_idx] - float(timing[1]))/1000.0))
-                                FPR_ACCOF = np.append(FPR_ACCOF, FPR/frames_benign)
-                                TPR_ACCOF = np.append(TPR_ACCOF, TPR/frames_attack)
-                            elif key == 'GPSOF':
-                                if TTD_idx == 0:
-                                    TTD_GPSOF = np.append(TTD_GPSOF, 0)
-                                else:
-                                    TTD_GPSOF = np.append(TTD_GPSOF, int((value2[TTD_idx] - float(timing[1]))/1000.0))
-                                FPR_GPSOF = np.append(FPR_GPSOF, FPR/frames_benign)
-                                TPR_GPSOF = np.append(TPR_GPSOF, TPR/frames_attack)
-                            elif key == 'ACCGPS':
-                                if TTD_idx == 0:
-                                    TTD_ACCGPS = np.append(TTD_ACCGPS, 0)
-                                else:
-                                    TTD_ACCGPS = np.append(TTD_ACCGPS, int((value2[TTD_idx] - float(timing[1]))/1000.0))
-                                FPR_ACCGPS = np.append(FPR_ACCGPS, FPR/frames_benign)
-                                TPR_ACCGPS = np.append(TPR_ACCGPS, TPR/frames_attack)
-                        else:
-                            if key == 'GPSMAG':
-                                if TTD_idx == 0:
-                                    TTD_GPSMAG = np.append(TTD_GPSMAG, 0)
-                                else:
-                                    TTD_GPSMAG = np.append(TTD_GPSMAG, int((value2[TTD_idx] - float(timing[1]))/1000.0))
-                                FPR_GPSMAG = np.append(FPR_GPSMAG, FPR/frames_benign)
-                                TPR_GPSMAG = np.append(TPR_GPSMAG, TPR/frames_attack)
-                            elif key == 'GPSOF':
-                                if TTD_idx == 0:
-                                    TTD_GPSOF = np.append(TTD_GPSOF, 0)
-                                else:
-                                    TTD_GPSOF = np.append(TTD_GPSOF, int((value2[TTD_idx] - float(timing[1]))/1000.0))
-                                FPR_GPSOF = np.append(FPR_GPSOF, FPR/frames_benign)
-                                TPR_GPSOF = np.append(TPR_GPSOF, TPR/frames_attack)
-
-                # Match array lengths then output the csv
-                FPR_ACCOF = np.pad(FPR_ACCOF, (0, test_thresholds - len(FPR_ACCOF)), 'constant')
-                TPR_ACCOF = np.pad(TPR_ACCOF, (0, test_thresholds - len(TPR_ACCOF)), 'constant')
-                TTD_ACCOF = np.pad(TTD_ACCOF, (0, test_thresholds - len(TTD_ACCOF)), 'constant')
-                FPR_ACCGPS = np.pad(FPR_ACCGPS, (0, test_thresholds - len(FPR_ACCGPS)), 'constant')
-                TPR_ACCGPS = np.pad(TPR_ACCGPS, (0, test_thresholds - len(TPR_ACCGPS)), 'constant')
-                TTD_ACCGPS = np.pad(TTD_ACCGPS, (0, test_thresholds - len(TTD_ACCGPS)), 'constant')
-                FPR_GPSOF = np.pad(FPR_GPSOF, (0, test_thresholds - len(FPR_GPSOF)), 'constant')
-                TPR_GPSOF = np.pad(TPR_GPSOF, (0, test_thresholds - len(TPR_GPSOF)), 'constant')
-                TTD_GPSOF = np.pad(TTD_GPSOF, (0, test_thresholds - len(TTD_GPSOF)), 'constant')
-                FPR_GPSMAG = np.pad(FPR_GPSMAG, (0, test_thresholds - len(FPR_GPSMAG)), 'constant')
-                TPR_GPSMAG = np.pad(TPR_GPSMAG, (0, test_thresholds - len(TPR_GPSMAG)), 'constant')
-                TTD_GPSMAG = np.pad(TTD_GPSMAG, (0, test_thresholds - len(TTD_GPSMAG)), 'constant')
-
-                if suffixes[i] != "GC":
-                    outCsv = pd.DataFrame(data={'Threshold': range(1,test_thresholds+1),
-                                           'ACCOF(FPR)':FPR_ACCOF,
-                                           'ACCOF(TPR)':TPR_ACCOF,
-                                           'ACCOF(TTD)':TTD_ACCOF,
-                                           'GPSOF(FPR)':FPR_GPSOF,
-                                           'GPSOF(TPR)':TPR_GPSOF,
-                                           'GPSOF(TTD)':TTD_GPSOF,
-                                           'ACCGPS(FPR)':FPR_ACCGPS,
-                                           'ACCGPS(TPR)':TPR_ACCGPS,
-                                           'ACCGPS(TTD)':TTD_ACCGPS})
-                else:
-                    outCsv = pd.DataFrame(data={'Threshold': range(1,test_thresholds+1),
-                                           'GPSOF(FPR)':FPR_GPSOF,
-                                           'GPSOF(TPR)':TPR_GPSOF,
-                                           'GPSOF(TTD)':TTD_GPSOF,
-                                           'GPSMAG(FPR)':FPR_GPSMAG,
-                                           'GPSMAG(TPR)':TPR_GPSMAG,
-                                           'GPSMAG(TTD)':TTD_GPSOF})
-                
-                if(imulpf == 0 and oflpf == 0):
-                    outCsv.to_csv(outFiles[i], index=False)
-                else:
-                    outCsv.to_csv(outFiles[i][:46] + 'alpha/imu-' +
-                                  str(int(imulpf*100)) + '_of-' + str(int(oflpf*100))
-                                  + outFiles[i][45:],index=False)  
 
 def main():
     # Simulation Data
