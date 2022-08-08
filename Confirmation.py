@@ -332,6 +332,30 @@ def graph_conf(ts, sig1, sig1_bound, sig2, sig2_bound, names=["sig1", "sig2"]):
     plt.scatter(x, sig2 - abs(sig2_bound), marker='.', label='-'+names[1])
     
     plt.legend(loc='lower right')
+    
+def graph_dis_signals(df, axlab=['Time (s)', "Disagreement (m/s)"], roll=0, timing=[]):
+    fig = plt.figure()
+    x = df.iloc[:,0]
+    sig1 = df.iloc[:,1]
+    sig2 = df.iloc[:,2]
+    names = [df.iloc[:,1].name, df.iloc[:,2].name]
+    
+    plt.plot(x, sig1, label=names[0], color='blue')
+    plt.plot(x, sig2, label=names[1], color='red')
+    
+    plt.xlabel(axlab[0])
+    plt.ylabel(axlab[1])
+    
+    plt.legend()
+    
+    plt.fill_between(x, sig1, sig2, where=sig2>sig1, facecolor='red', alpha=0.2, interpolate=True)
+    plt.fill_between(x, sig1, sig2, where=sig2<=sig1, facecolor='blue', alpha=0.2, interpolate=True)
+    plt.plot(x, [0]*len(x), color="black")
+    
+    if roll != 0:
+        plt.plot(df.TimeUS, df.Off.rolling(roll, min_periods=1).sum())
+    if len(timing) == 3:
+        plt.axvline(timing[1], color='red')
 
 # Just a wrapper to cast sympy atan2 to a float
 def arctan2(y, x):
@@ -437,6 +461,48 @@ def confirm(df, wrap=False):
                             )        
     return errors
 
+# Expecting pandas dataframe in the format of
+# "Timestamp,Sensor1,Sensor2"
+# Calculates the difference in the signals and the cumulative difference at
+#  each step
+# Wrap is used for heading where the values are modulo 360
+def boundary(df, wrap=False):
+    if(df.isnull().values.any()):
+        print("nan found in Confirmation:")
+        print(df.columns)
+        exit
+    if not wrap:
+        subset = df.copy(deep=True)
+        subset.loc[:, 'Off'] = subset.iloc[:, 1] - subset.iloc[:, 2]
+        subset.loc[:, 'Disagreement'] = subset.Off.cumsum()
+            
+    else:
+        subset = df.copy(deep=True)
+        subset.loc[:, 'Off'] = 0
+        for index, row in df.iterrows():
+            # If difference is less than 180, just use the difference
+            if abs(row.iloc[1] - row.iloc[2]) < 180:
+                subset.loc[index, 'Off'] = row.iloc[1] - row.iloc[2]
+            # Positive Result because row.iloc[1] < row.iloc[2] means more cw
+            elif row.iloc[1] < row.iloc[2]:
+                subset.loc[index, 'Off'] = 360 - (row.iloc[2] - row.iloc[1])
+            # Negative result because row.iloc[1] > row.iloc[2] means more ccw
+            elif row.iloc[2] <= row.iloc[1]:
+                subset.loc[index, 'Off'] = row.iloc[1] - row.iloc[2] - 360
+        subset.loc[:, 'Disagreement'] = subset.Off.cumsum()
+    return subset
+
+# Helper function that expects the results of the Boundary function above
+#  Calculates the max disagreement for the benign and attack portion of a
+#  mission given a window size. Used for determining viable window sizes
+def peak_compare(sig1, timing, roll):
+    benign = sig1[(sig1['TimeUS'] < timing[1]) & (sig1['TimeUS'] > timing[0])]
+    attack = sig1[(sig1['TimeUS'] < timing[2]) & (sig1['TimeUS'] > timing[1])]
+    benign_windowed = benign.Off.rolling(roll, min_periods=1)
+    benign_peak = max(benign_windowed.sum().max(), abs(benign_windowed.sum().min()))
+    attack_windowed = attack.Off.rolling(roll, min_periods=1)
+    attack_peak = max(attack_windowed.sum().max(), abs(attack_windowed.sum().min()))
+    return(attack_peak/benign_peak)
 
 def yaw_from_mag_tc(magx, magy, magz, pitch, roll):
     mag_norm = sqrt((magx*magx) + (magy * magy) + (magz + magz))
