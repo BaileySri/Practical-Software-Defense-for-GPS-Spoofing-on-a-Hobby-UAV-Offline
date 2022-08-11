@@ -1,7 +1,44 @@
 import pandas as pd
 from functools import reduce
+from math import atan, degrees
 #TQDM for progress information
 from tqdm.notebook import trange
+
+#Wrapper to convert magy and magx series to heading
+def mag_to_heading(z, y, x):
+    res = []
+    for index in range(len(y)):
+        norm = z[index] + y[index] + x[index]
+        norm_x = x[index]/norm
+        norm_y = y[index]/norm
+        if x[index] > 0:
+            res.append(90 - degrees(atan(norm_y/norm_x)))
+        elif x[index] < 0:
+            res.append(270 - degrees(atan(norm_y/norm_x)))
+        else:
+            if y[index] < 0:
+                res.append(180)
+            elif y[index] > 0:
+                res.append(0)
+    return(pd.Series(res, name="Mag Heading"))
+
+#Wrapper to convert magz and magy series to pitch
+def mag_to_pitch(z, y, x):
+    res = []
+    for index in range(len(z)):
+        norm = z[index] + y[index] + x[index]
+        norm_z = z[index]/norm
+        norm_x = x[index]/norm
+        if x[index] > 0:
+            res.append(90 - degrees(atan(-norm_z/norm_x)))
+        elif x[index] < 0:
+            res.append(270 - degrees(atan(-norm_z/norm_x)))
+        else:
+            if z[index] < 0:
+                res.append(0)
+            elif z[index] > 0:
+                res.append(180)
+    return(pd.Series(res, name="Mag Pitch"))
 
 #Open log file and parse out the SNS data into pandas dataframes
 def process_SNS(path, out="", SNS_COUNT=4):
@@ -35,3 +72,12 @@ def process_SNS(path, out="", SNS_COUNT=4):
     if out:
         SNS.to_csv(out, index=False)
     return(SNS)
+
+#Trapezoidal Integration
+def trap_integrate(ts, signal):
+    result = []
+    for val in range(1,len(signal)):
+        height = (signal[val] + signal[val-1]) / 2
+        dt = ts[val] - ts[val-1]
+        result.append(height * dt)
+    return(pd.Series(result, name=signal.name + "_int", dtype=signal.dtype))
