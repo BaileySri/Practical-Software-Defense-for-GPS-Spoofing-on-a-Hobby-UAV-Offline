@@ -3,6 +3,11 @@ SensorConfirmation
 
 Processing of quadcopter sensor data to analyze the performance of Sensor Confirmation
 
+Assuming current directory is project repo
+1. conda create env --name NAME --file environment.yml
+
+2. pip install --editable .
+
 Project Organization
 ------------
 
