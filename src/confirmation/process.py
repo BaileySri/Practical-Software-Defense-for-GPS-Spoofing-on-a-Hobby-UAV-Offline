@@ -1,6 +1,7 @@
 import pandas as pd
 from functools import reduce
 from math import atan, degrees
+from pymap3d import geodetic2enu
 #TQDM for progress information
 from tqdm.notebook import trange
 
@@ -73,6 +74,15 @@ def process_SNS(path, out="", SNS_COUNT=4):
         SNS.to_csv(out, index=False)
     return(SNS)
 
+#Low pass filter for pandas Series data
+def low_pass_filter(signal, alpha=1):
+    filtered = [signal[0]]
+    val = signal[0]
+    for sample in signal[1:]:
+        val += ((sample-val) * alpha)
+        filtered.append(val)
+    return(pd.Series(filtered, name=signal.name + "_filt"))
+
 #Trapezoidal Integration
 def trap_integrate(ts, signal):
     result = []
@@ -81,3 +91,23 @@ def trap_integrate(ts, signal):
         dt = ts[val] - ts[val-1]
         result.append(height * dt)
     return(pd.Series(result, name=signal.name + "_int", dtype=signal.dtype))
+
+#Change in signal
+def change_in_signal(signal):
+    result = []
+    for val in range(1,len(signal)):
+        result.append(signal[val] - signal[val-1])
+    return(pd.Series(result, name=signal.name + "_dt", dtype=signal.dtype))
+
+def geodetic2ned(lat, lng, alt, lat0=0, lng0=0, alt0=0):
+    #if lat0=lng0=alt0=0, assume first row is origin
+    if lat0==0:
+        lat0 = lat[0]
+    if lng0==0:
+        lng0 = lng[0]
+    if alt0==0:
+        alt0 = alt[0]
+    local = [df.lat[0], df.lng[0], df.gpAlt[0]]
+    target = [df.lat[100], df.lng[100], df.gpAlt[100]]
+    res = geodetic2enu( target[0], target[1], target[2], local[0], local[1], local[2])
+    res = [res[1], res[0], -res[2]]
