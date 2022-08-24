@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 
-def simple_time_plot(ts, ys, units=["", ""], title=""):
+def simple_time_plot(ts, ys, units=["", ""], title="", atk=0):
     plt.figure(figsize=(12, 8), dpi=80)
     
     if type(ys) == pd.core.frame.DataFrame:
@@ -22,7 +22,10 @@ def simple_time_plot(ts, ys, units=["", ""], title=""):
         except TypeError:
             #Duck Typing, it's a list of non-iterables
             plt.plot(ts, ys, label="ys")
-
+            
+    #Point which attack occurs
+    if atk != 0:
+        plt.axvline(atk, color='red')
     plt.xlabel("Time (" + str(units[0]) + ")")
     plt.ylabel(str(units[1]))
     if title:

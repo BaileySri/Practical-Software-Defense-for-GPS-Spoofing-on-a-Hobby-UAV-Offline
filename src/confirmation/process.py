@@ -74,14 +74,14 @@ def process_SNS(path, out="", SNS_COUNT=4):
         SNS.to_csv(out, index=False)
     return(SNS)
 
-#Low pass filter for pandas Series data
-def low_pass_filter(signal, alpha=1):
+#leaky integrator for pandas Series data
+def leaky_integrator(signal, alpha=1):
     filtered = [signal[0]]
     val = signal[0]
     for sample in signal[1:]:
         val += ((sample-val) * alpha)
         filtered.append(val)
-    return(pd.Series(filtered, name=signal.name + "_filt"))
+    return(pd.Series(filtered, name=signal.name + "_leaky"))
 
 #Trapezoidal Integration
 def trap_integrate(ts, signal):
