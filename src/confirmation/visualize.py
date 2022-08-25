@@ -14,11 +14,11 @@ def simple_time_plot(ts, ys, units=["", ""], title="", atk=0):
         try:
             #Iterate list of iterables
             for i in range(len(ys)):
-                vals = iter(ys[i])
+                vals = list(iter(ys[i]))
                 try:
-                    plt.plot(ts, list(vals), label=ys[i].name)
+                    plt.plot(ts, vals, label=ys[i].name)
                 except AttributeError:
-                    plt.plot(ts, list(vals), label="ys[" + str(i) + "]")
+                    plt.plot(ts, vals, label="ys[" + str(i) + "]")
         except TypeError:
             #Duck Typing, it's a list of non-iterables
             plt.plot(ts, ys, label="ys")

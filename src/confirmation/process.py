@@ -2,6 +2,7 @@ import pandas as pd
 from functools import reduce
 from math import atan, degrees
 from pymap3d import geodetic2enu
+from numpy.polynomial.polynomial import Polynomial
 #TQDM for progress information
 from tqdm.notebook import trange
 
@@ -111,3 +112,11 @@ def geodetic2ned(lat, lng, alt, lat0=0, lng0=0, alt0=0):
     target = [df.lat[100], df.lng[100], df.gpAlt[100]]
     res = geodetic2enu( target[0], target[1], target[2], local[0], local[1], local[2])
     res = [res[1], res[0], -res[2]]
+    
+def linear_bias(ts, signal, indices=[], deg=1):
+    if indices:
+        fit = Polynomial.fit(ts[indices[0]:indices[1]], signal[indices[0]:indices[1]], deg)
+    else:
+        fit = Polynomial.fit(ts, signal, deg)
+    baseline = [fit(x) for x in ts]
+    return(signal-baseline)
