@@ -101,17 +101,20 @@ def change_in_signal(signal):
     return(pd.Series(result, name=signal.name + "_dt", dtype=signal.dtype))
 
 def geodetic2ned(lat, lng, alt, lat0=0, lng0=0, alt0=0):
-    #if lat0=lng0=alt0=0, assume first row is origin
-    if lat0==0:
-        lat0 = lat[0]
-    if lng0==0:
+    #if lat0==lng0==alt0==0, assume first row is origin
+    if lat0==0 and lng0==0 and alt0==0:
+        local = [lat[0], lng[0], alt[0]]
         lng0 = lng[0]
-    if alt0==0:
         alt0 = alt[0]
-    local = [df.lat[0], df.lng[0], df.gpAlt[0]]
-    target = [df.lat[100], df.lng[100], df.gpAlt[100]]
-    res = geodetic2enu( target[0], target[1], target[2], local[0], local[1], local[2])
-    res = [res[1], res[0], -res[2]]
+    #Otherwise lat0,lng0, and alt0 are origin
+    else:
+        local = [lat0, lng0, alt0]
+    res = [] #pd.Series(data=None, name="GPS NED")
+    for i in range(len(lat)):
+        enu = geodetic2enu( lat[i], lng[i], alt[i],
+                            local[0], local[1], local[2])
+        res.append([enu[1], enu[0], -enu[2]])
+    return(pd.DataFrame(data=res, columns=["North", "East", "Down"]))
     
 def linear_bias(ts, signal, indices=[], deg=1):
     if indices:
