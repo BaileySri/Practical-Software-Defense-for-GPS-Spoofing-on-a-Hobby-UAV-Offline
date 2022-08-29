@@ -116,9 +116,10 @@ def geodetic2ned(lat, lng, alt, lat0=0, lng0=0, alt0=0):
         res.append([enu[1], enu[0], -enu[2]])
     return(pd.DataFrame(data=res, columns=["North", "East", "Down"]))
     
-def linear_bias(ts, signal, indices=[], deg=1):
-    if indices:
-        fit = Polynomial.fit(ts[indices[0]:indices[1]], signal[indices[0]:indices[1]], deg)
+def linear_bias(ts, signal, times=[], deg=1):
+    if times:
+        indices = ts[(ts<times[1]) & (ts>times[0])].index
+        fit = Polynomial.fit(ts[indices], signal[indices], deg)
     else:
         fit = Polynomial.fit(ts, signal, deg)
     baseline = [fit(x) for x in ts]
