@@ -98,8 +98,12 @@ def change_in_signal(signal):
     result = []
     for val in range(1,len(signal)):
         result.append(signal[val] - signal[val-1])
-    return(pd.Series(result, name=signal.name + "_dt", dtype=signal.dtype))
-
+    try:
+        return(pd.Series(result, name=signal.name + "_dt", dtype=signal.dtype))
+    except (TypeError, AttributeError):
+        return(result)
+    
+#Convert geodetic (latitude, longitude, altitude) data to North,East,Down ECEF frame
 def geodetic2ned(lat, lng, alt, lat0=0, lng0=0, alt0=0):
     #if lat0==lng0==alt0==0, assume first row is origin
     if lat0==0 and lng0==0 and alt0==0:
@@ -115,8 +119,11 @@ def geodetic2ned(lat, lng, alt, lat0=0, lng0=0, alt0=0):
                             local[0], local[1], local[2])
         res.append([enu[1], enu[0], -enu[2]])
     return(pd.DataFrame(data=res, columns=["North", "East", "Down"]))
-    
+
+#Biases the data by the line of best fit
 def linear_bias(ts, signal, times=[], deg=1):
+    if type(signal) == list:
+        signal = pd.Series(signal)
     if times:
         indices = ts[(ts<times[1]) & (ts>times[0])].index
         fit = Polynomial.fit(ts[indices], signal[indices], deg)
@@ -124,3 +131,28 @@ def linear_bias(ts, signal, times=[], deg=1):
         fit = Polynomial.fit(ts, signal, deg)
     baseline = [fit(x) for x in ts]
     return(signal-baseline)
+
+#Matches the faster updating signal to the slower updating one and
+#sums the readings between.
+def signal_match_and_cumsum(x_ts, x_sig, y_ts, y_sig):
+    accumulator = 0
+    res = []
+    if len(x_ts) >= len(y_ts):
+        for j in range(len(y_ts)):
+            for i in range(len(x_ts)):
+                if x_ts[i] < y_ts[j]:
+                    accumulator += x_sig[i]
+                else:
+                    res.append(accumulator)
+                    accumulator = x_sig[i]
+                    break
+    else:
+        for j in range(len(x_ts)):
+            for i in range(len(y_ts)):
+                if y_ts[i] < x_ts[j]:
+                    accumulator += y_sig[i]
+                else:
+                    res.append(accumulator)
+                    accumulator = y_sig[i]
+                    break
+    return(res)

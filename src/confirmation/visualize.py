@@ -11,17 +11,20 @@ def simple_time_plot(ts, ys, units=["", ""], title="", atk=0):
     elif type(ys) == pd.core.frame.Series:
         plt.plot(ts, ys, label=ys.name)
     elif type(ys) == list:
-        try:
-            #Iterate list of iterables
-            for i in range(len(ys)):
-                vals = list(iter(ys[i]))
-                try:
-                    plt.plot(ts[i], vals, label=ys[i].name)
-                except AttributeError:
-                    plt.plot(ts[i], vals, label="ys[" + str(i) + "]")
-        except TypeError:
-            #Duck Typing, it's a list of non-iterables
-            plt.plot(ts[i], ys, label="ys")
+        if (type(ys[0]) != pd.core.frame.Series) and (type(ys[0]) != list):
+            plt.plot(ts, ys, label="ys")
+        else:
+            try:
+                #Iterate list of iterables
+                for i in range(len(ys)):
+                    vals = list(iter(ys[i]))
+                    try:
+                        plt.plot(ts[i], vals, label=ys[i].name)
+                    except AttributeError:
+                        plt.plot(ts[i], vals, label="ys[" + str(i) + "]")
+            except TypeError:
+                #Duck Typing, it's a list of non-iterables
+                plt.plot(ts[i], ys, label="ys")
             
     #Point which attack occurs
     if atk != 0:
