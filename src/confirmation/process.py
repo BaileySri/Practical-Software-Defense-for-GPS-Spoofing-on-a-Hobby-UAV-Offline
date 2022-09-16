@@ -132,6 +132,29 @@ def linear_bias(ts, signal, times=[], deg=1):
     baseline = [fit(x) for x in ts]
     return(signal-baseline)
 
+#Biases the data more realistically by stepping through the signal
+#TODO: Maybe change this to a HPF approach rather than a running
+#      average
+def linear_bias2(ts, signal, times=[], deg=1):
+    cumsum = 0
+    count = 0
+    res = []
+    if times:
+        for index in range(len(signal)):
+            if ts[index] > times[0] and ts[index] < times[1]:
+                cumsum += signal[index]
+                count += 1
+                res.append(signal[index] - (cumsum/count))
+    else:
+        for index in range(len(signal)):
+            cumsum += signal[index]
+            count += 1
+            res.append(signal[index] - (cumsum/count))
+    if(type(signal) == pd.core.series.Series):
+        return(pd.Series(res, name=signal.name + "_biased"))
+    else:
+        return(pd.Series(res, name="ys_biased"))
+
 #Matches the faster updating signal to the slower updating one and
 #sums the readings between.
 def signal_match_and_cumsum(x_ts, x_sig, y_ts, y_sig):
