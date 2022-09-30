@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 
-def simple_time_plot(ts, ys, units=["", ""], title="", atk=0):
+def simple_time_plot(ts, ys, units=["", ""], title="", atk=0, lines=[]):
     if(len(ts) != len(ys)):
         print("Mismatched timestamp and signal lengths: %s Timestamps, %s Signals" % (str(len(ts)), str(len(ys))))
     else:
@@ -30,7 +30,11 @@ def simple_time_plot(ts, ys, units=["", ""], title="", atk=0):
 
         #Point which attack occurs
         if atk != 0:
-            plt.axvline(atk, color='red')
+            plt.axvline(atk, color='r')
+        #Other lines
+        if lines:
+            for line in lines:
+                plt.axvline(line)
         plt.xlabel("Time (" + str(units[0]) + ")")
         plt.ylabel(str(units[1]))
         if title:

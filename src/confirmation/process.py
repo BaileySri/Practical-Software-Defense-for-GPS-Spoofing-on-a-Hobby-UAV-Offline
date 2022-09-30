@@ -6,10 +6,24 @@ from numpy.polynomial.polynomial import Polynomial
 #TQDM for progress information
 from tqdm.notebook import trange
 
+#Gets absolute difference in values.
+#Only added to diff degree values with modulo arithmetic
+def diff(x, y, wrap=False):
+    if not wrap:
+        return(abs(x - y))
+    else:
+        res = []
+        for index in range(len(x)):
+            if (abs(x[index] - y[index]) >= 180):
+                res.append(abs(x[index] - (y[index] + 360)))
+            else:
+                res.append(abs(x[index] - y[index]))
+        return(pd.Series(res))
+
 #Wrapper to convert magy and magx series to heading
 def mag_to_heading(z, y, x):
     res = []
-    for index in range(len(y)):
+    for index in trange(len(y), desc="mag_to_heading"):
         norm = z[index] + y[index] + x[index]
         norm_x = x[index]/norm
         norm_y = y[index]/norm
@@ -27,7 +41,7 @@ def mag_to_heading(z, y, x):
 #Wrapper to convert magz and magy series to pitch
 def mag_to_pitch(z, y, x):
     res = []
-    for index in range(len(z)):
+    for index in trange(len(z), desc="mag_to_pitch"):
         norm = z[index] + y[index] + x[index]
         norm_z = z[index]/norm
         norm_x = x[index]/norm
@@ -50,7 +64,7 @@ def process_SNS(path, out="", SNS_COUNT=4):
 
     with open(path) as infile:
         number_lines = sum(1 for line in open(path))
-        for counter in trange(number_lines):
+        for counter in trange(number_lines, "process_SNS"):
             line = infile.readline()
             strippedLine = line.strip()
 
@@ -87,7 +101,7 @@ def leaky_integrator(signal, alpha=1):
 #Trapezoidal Integration
 def trap_integrate(ts, signal):
     result = []
-    for val in range(1,len(signal)):
+    for val in trange(1,len(signal), desc="trap_integrate"):
         height = (signal[val] + signal[val-1]) / 2
         dt = ts[val] - ts[val-1]
         result.append(height * dt)
@@ -96,7 +110,7 @@ def trap_integrate(ts, signal):
 #Change in signal
 def change_in_signal(signal):
     result = []
-    for val in range(1,len(signal)):
+    for val in trange(1,len(signal), desc="change_in_signal"):
         result.append(signal[val] - signal[val-1])
     try:
         return(pd.Series(result, name=signal.name + "_dt", dtype=signal.dtype))
@@ -114,7 +128,7 @@ def geodetic2ned(lat, lng, alt, lat0=0, lng0=0, alt0=0):
     else:
         local = [lat0, lng0, alt0]
     res = [] #pd.Series(data=None, name="GPS NED")
-    for i in range(len(lat)):
+    for i in trange(len(lat), desc="geodetic2ned"):
         enu = geodetic2enu( lat[i], lng[i], alt[i],
                             local[0], local[1], local[2])
         res.append([enu[1], enu[0], -enu[2]])
@@ -140,13 +154,13 @@ def linear_bias2(ts, signal, times=[], deg=1):
     count = 0
     res = []
     if times:
-        for index in range(len(signal)):
+        for index in trange(len(signal), desc="linear_bias2"):
             if ts[index] > times[0] and ts[index] < times[1]:
                 cumsum += signal[index]
                 count += 1
                 res.append(signal[index] - (cumsum/count))
     else:
-        for index in range(len(signal)):
+        for index in trange(len(signal), desc="linear_bias2"):
             cumsum += signal[index]
             count += 1
             res.append(signal[index] - (cumsum/count))
@@ -161,7 +175,7 @@ def signal_match_and_cumsum(x_ts, x_sig, y_ts, y_sig):
     accumulator = 0
     res = []
     if len(x_ts) >= len(y_ts):
-        for j in range(len(y_ts)):
+        for j in trange(len(y_ts), desc="signal_match_and_cumsum"):
             for i in range(len(x_ts)):
                 if x_ts[i] < y_ts[j]:
                     accumulator += x_sig[i]
@@ -170,7 +184,7 @@ def signal_match_and_cumsum(x_ts, x_sig, y_ts, y_sig):
                     accumulator = x_sig[i]
                     break
     else:
-        for j in range(len(x_ts)):
+        for j in trange(len(x_ts), desc="signal_match_and_cumsum"):
             for i in range(len(y_ts)):
                 if y_ts[i] < x_ts[j]:
                     accumulator += y_sig[i]
