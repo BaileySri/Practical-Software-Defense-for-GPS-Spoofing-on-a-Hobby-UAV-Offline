@@ -1,10 +1,11 @@
 import pandas as pd
 from functools import reduce
-from math import atan, degrees
+from math import atan, degrees, sqrt
 from pymap3d import geodetic2enu
 from numpy.polynomial.polynomial import Polynomial
 #TQDM for progress information
 from tqdm.notebook import trange
+from IPython.display import clear_output
 
 #Gets absolute difference in values.
 #Only added to diff degree values with modulo arithmetic
@@ -36,6 +37,7 @@ def mag_to_heading(z, y, x):
                 res.append(180)
             elif y[index] > 0:
                 res.append(0)
+    clear_output()
     return(pd.Series(res, name="Mag Heading"))
 
 #Wrapper to convert magz and magy series to pitch
@@ -54,6 +56,7 @@ def mag_to_pitch(z, y, x):
                 res.append(0)
             elif z[index] > 0:
                 res.append(180)
+    clear_output()
     return(pd.Series(res, name="Mag Pitch"))
 
 #Open log file and parse out the SNS data into pandas dataframes
@@ -89,14 +92,19 @@ def process_SNS(path, out="", SNS_COUNT=4):
         SNS.to_csv(out, index=False)
     return(SNS)
 
-#leaky integrator for pandas Series data
-def leaky_integrator(signal, alpha=1):
+#Takes low frequency information in signal, IIR
+def low_pass_filter(signal, alpha):
     filtered = [signal[0]]
-    val = signal[0]
+    val = signal[0]*alpha
     for sample in signal[1:]:
         val += ((sample-val) * alpha)
         filtered.append(val)
-    return(pd.Series(filtered, name=signal.name + "_leaky"))
+    return(pd.Series(filtered, name=signal.name + "_lpf"))
+
+#Take high frequency information in signal, IIR
+def high_pass_filter(signal, alpha):
+    res = signal - low_pass_filter(signal, 1-alpha)
+    return(pd.Series(res, name=signal.name + "_hpf"))
 
 #Trapezoidal Integration
 def trap_integrate(ts, signal):
@@ -105,6 +113,7 @@ def trap_integrate(ts, signal):
         height = (signal[val] + signal[val-1]) / 2
         dt = ts[val] - ts[val-1]
         result.append(height * dt)
+    clear_output()
     return(pd.Series(result, name=signal.name + "_int", dtype=signal.dtype))
 
 #Change in signal
@@ -113,9 +122,13 @@ def change_in_signal(signal):
     for val in trange(1,len(signal), desc="change_in_signal"):
         result.append(signal[val] - signal[val-1])
     try:
+        clear_output()
         return(pd.Series(result, name=signal.name + "_dt", dtype=signal.dtype))
     except (TypeError, AttributeError):
         return(result)
+    
+def body2earth(bf, rot):
+    return(bf * rot)
     
 #Convert geodetic (latitude, longitude, altitude) data to North,East,Down ECEF frame
 def geodetic2ned(lat, lng, alt, lat0=0, lng0=0, alt0=0):
@@ -132,6 +145,7 @@ def geodetic2ned(lat, lng, alt, lat0=0, lng0=0, alt0=0):
         enu = geodetic2enu( lat[i], lng[i], alt[i],
                             local[0], local[1], local[2])
         res.append([enu[1], enu[0], -enu[2]])
+    clear_output()
     return(pd.DataFrame(data=res, columns=["North", "East", "Down"]))
 
 #Biases the data by the line of best fit
@@ -146,24 +160,24 @@ def linear_bias(ts, signal, times=[], deg=1):
     baseline = [fit(x) for x in ts]
     return(signal-baseline)
 
-#Biases the data more realistically by stepping through the signal
-#TODO: Maybe change this to a HPF approach rather than a running
-#      average
-def linear_bias2(ts, signal, times=[], deg=1):
+#Biases the data by the average calculated at each
+#data point
+def running_average(ts, signal, times=[], deg=1):
     cumsum = 0
     count = 0
     res = []
     if times:
-        for index in trange(len(signal), desc="linear_bias2"):
+        for index in trange(len(signal), desc="running_average"):
             if ts[index] > times[0] and ts[index] < times[1]:
                 cumsum += signal[index]
                 count += 1
                 res.append(signal[index] - (cumsum/count))
     else:
-        for index in trange(len(signal), desc="linear_bias2"):
+        for index in trange(len(signal), desc="running_average"):
             cumsum += signal[index]
             count += 1
             res.append(signal[index] - (cumsum/count))
+    clear_output()
     if(type(signal) == pd.core.series.Series):
         return(pd.Series(res, name=signal.name + "_biased"))
     else:
@@ -192,4 +206,16 @@ def signal_match_and_cumsum(x_ts, x_sig, y_ts, y_sig):
                     res.append(accumulator)
                     accumulator = y_sig[i]
                     break
+    clear_output()
     return(res)
+
+#length of each row of list of lists
+def length(vals, name="length"):
+    res = []
+    for index in trange(len(vals[0]), desc="length"):
+        sqsum = 0
+        for val in range(len(vals)):
+            sqsum += vals[val][index]**2
+        res.append(sqrt(sqsum))
+    clear_output()
+    return(pd.Series(data=res, name=name)) 
