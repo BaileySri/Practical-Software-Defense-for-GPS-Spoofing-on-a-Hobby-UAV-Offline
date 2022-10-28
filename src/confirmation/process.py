@@ -129,7 +129,7 @@ def change_in_signal(signal):
 
 def body_to_earth2D(front, right, m00, m10):
     if len(front) != len(right) or len(right) != len(m00) or len(m00) != len(m10):
-        print("Mismatched series: %f, %f, %f, %f" % {len(front), len(right), len(m00), len(m10)})
+        print("Mismatched series: %f, %f, %f, %f" % (len(front), len(right), len(m00), len(m10)))
         return([])
     
     normalized = []
@@ -142,6 +142,22 @@ def body_to_earth2D(front, right, m00, m10):
                     -front[index] * normalized[index][1] + right[index] * normalized[index][0]])
     clear_output()
     return(pd.DataFrame(res, columns=["North", "East"]))
+
+def earth_to_body2D(north, east, m00, m10):
+    if len(north) != len(east) or len(east) != len(m00) or len(m00) != len(m10):
+        print("Mismatched series: %f, %f, %f, %f" % (len(north), len(east), len(m00), len(m10)))
+        return([])
+    
+    normalized = []
+    for index in trange(len(m00), desc="Normalizing"):
+        normalized.append([m00[index]/sqrt(m00[index]**2+m10[index]**2), m10[index]/sqrt(m00[index]**2+m10[index]**2)])
+    clear_output()
+    res = []
+    for index in trange(len(normalized), desc="Rotating"):
+        res.append([north[index] * normalized[index][0] - east[index] * normalized[index][1],
+                    north[index] * normalized[index][1] + east[index] * normalized[index][0]])
+    clear_output()
+    return(pd.DataFrame(res, columns=["Front", "Right"]))
     
 #Convert geodetic (latitude, longitude, altitude) data to North,East,Down ECEF frame
 def geodetic2ned(lat, lng, alt, lat0=0, lng0=0, alt0=0):

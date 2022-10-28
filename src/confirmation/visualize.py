@@ -2,11 +2,11 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 
-def simple_time_plot(ts, ys, units=["", ""], title="", atk=0, lines=[]):
+def simple_time_plot(ts, ys, units=["", ""], title="", atk=0, lines=[], figsize=(12, 8)):
     if(len(ts) != len(ys)):
         print("Mismatched timestamp and signal lengths: %s Timestamps, %s Signals" % (str(len(ts)), str(len(ys))))
     else:
-        plt.figure(figsize=(12, 8), dpi=80)
+        plt.figure(figsize=figsize, dpi=80)
         if type(ys) == pd.core.frame.DataFrame:
             for col in range(len(ys.columns)):
                 plt.plot(ts[col], ys.iloc[:,col], label=ys.iloc[:,col].name)
