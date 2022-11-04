@@ -1,7 +1,6 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 
-
 def simple_time_plot(ts, ys, units=["", ""], title="", atk=0, lines=[], figsize=(12, 8)):
     if(len(ts) != len(ys)):
         print("Mismatched timestamp and signal lengths: %s Timestamps, %s Signals" % (str(len(ts)), str(len(ys))))

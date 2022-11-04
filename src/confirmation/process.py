@@ -95,7 +95,7 @@ def process_SNS(path, out="", SNS_COUNT=4):
 #Takes low frequency information in signal, IIR
 def low_pass_filter(signal, alpha):
     filtered = [signal[0]]
-    val = signal[0]*alpha
+    val = signal[0]
     for sample in signal[1:]:
         val += ((sample-val) * alpha)
         filtered.append(val)
