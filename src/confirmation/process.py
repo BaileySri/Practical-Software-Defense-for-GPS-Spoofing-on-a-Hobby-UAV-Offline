@@ -67,7 +67,7 @@ def process_SNS(path, out="", SNS_COUNT=4):
 
     with open(path) as infile:
         number_lines = sum(1 for line in open(path))
-        for counter in trange(number_lines, "process_SNS"):
+        for counter in trange(number_lines, desc="process_SNS"):
             line = infile.readline()
             strippedLine = line.strip()
 
