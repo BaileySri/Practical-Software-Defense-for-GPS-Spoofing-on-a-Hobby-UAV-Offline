@@ -28,17 +28,33 @@ def mag_to_heading(z, y, x):
         norm = z[index] + y[index] + x[index]
         norm_x = x[index]/norm
         norm_y = y[index]/norm
-        if x[index] > 0:
-            res.append(90 - degrees(atan(norm_y/norm_x)))
-        elif x[index] < 0:
-            res.append(270 - degrees(atan(norm_y/norm_x)))
+        if y[index] > 0:
+            res.append(90 - degrees(atan(norm_x/norm_y)))
+        elif y[index] < 0:
+            res.append(270 - degrees(atan(norm_x/norm_y)))
         else:
-            if y[index] < 0:
+            if x[index] < 0:
                 res.append(180)
-            elif y[index] > 0:
+            elif x[index] > 0:
                 res.append(0)
     clear_output()
     return(pd.Series(res, name="Mag Heading"))
+
+#Convert a series of heading values in degrees to their
+#cardinal equivalent, i.e., binning in 90 degree increments
+def head_to_card(x):
+    res = []
+    for index in trange(len(x), desc="head_to_card"):
+        if x[index] >= 315 or x[index] <= 45:
+            res.append("N")
+        elif x[index] <= 135 and x[index] > 45:
+            res.append("E")
+        elif x[index] <= 225 and x[index] > 135:
+            res.append("S")
+        else:
+            res.append("W")
+    clear_output()
+    return(pd.Series(res, name="Heading (Cardinal Directions)"))
 
 #Wrapper to convert magz and magy series to pitch
 def mag_to_pitch(z, y, x):
