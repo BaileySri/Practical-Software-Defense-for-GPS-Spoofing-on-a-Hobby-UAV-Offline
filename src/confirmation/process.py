@@ -16,7 +16,10 @@ def diff(x, y, wrap=False):
         res = []
         for index in range(len(x)):
             if (abs(x[index] - y[index]) >= 180):
-                res.append(abs(x[index] - (y[index] + 360)))
+                if y[index] <= x[index]:
+                    res.append(abs(x[index] - (y[index] + 360)))
+                else:
+                    res.append(abs(y[index] - (x[index] + 360)))
             else:
                 res.append(abs(x[index] - y[index]))
         return(pd.Series(res))
