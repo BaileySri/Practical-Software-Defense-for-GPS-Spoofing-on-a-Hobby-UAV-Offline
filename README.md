@@ -1,43 +1,44 @@
-SensorConfirmation
-==============================
+# You Can’t Get There from Here: Orthogonal Sensor Detection of UAV GPS Spoofing
 
-Processing of quadcopter sensor data to analyze the performance of Sensor Confirmation
 
-Assuming current directory is project repo
+The Jupyter Notebooks made available in this repository show the offline processing that was performed to determine parameters for testing and parse results.
+
+## Notebooks
+* [False Positive Testing](/notebooks/False%20Positive%20Rates.ipynb)
+    * False positives for the disagreement in OF, Gyroscope, and GPS over missions Benign 1-5
+* [Loiter Missions](/notebooks/Spoofing%20Loiter.ipynb)
+    * Looks at the performance of the defense for the Onestep and Multistep Loiter missions
+* [Flights](/notebooks/Spoofing%20Flights.ipynb)
+    * Looks at the performance of the defense for missions Flight 1-4 using OF and Gyroscope
+* [Choi Control Invariant](/notebooks/Choi%20Model.ipynb)
+    * Recreate the Choi control invariant to run over data logs using parameters derived from their [MATLAB scripts](/src/choi/Matlab_scripts/)
+
+## Setup Environment
+Assuming current directory is the base of the project repository (change NAME to desired conda environment name)
 1. conda create env --name NAME --file environment.yml
-
 2. pip install --editable .
 
-Project Organization
+## Project Organization
 ------------
 
-    ├── README.md          <- The top-level README for developers using this project.
+    ├── README.md   <- README
     ├── data
-    │   ├── interim        <- Intermediate data that has been transformed.
-    │   ├── processed      <- The final, canonical data sets.
-    │   └── raw            <- The original, immutable data dump.
+    │   └── interim <- Intermediate data that has been transformed
     │
-    ├── notebooks          <- Jupyter notebooks. Naming convention is a number (for ordering),
-    │                         the creator's initials, and a short `-` delimited description, e.g.
-    │                         `1.0-jqp-initial-data-exploration`.
+    ├── notebooks   <- Jupyter notebooks.
     │
-    ├── references         <- Data dictionaries, manuals, and all other explanatory materials.
+    ├── setup.py    <- Make this project pip installable with `pip install -e`
+    ├── src         <- Source code for use in this project.
+    │   └── confirmation        <- Helper functions to transform and visualize data
+    │   │  ├── visualize.py
+    │   │  └── process.py
+    │   └── choi                <- Choi Control Invariant files
+    │      ├── Matlab_Scripts
+    │      └── README.md
     │
-    ├── reports            <- Generated analysis as HTML, PDF, LaTeX, etc.
-    │   └── figures        <- Generated graphics and figures to be used in reporting
-    ├── setup.py           <- Make this project pip installable with `pip install -e`
-    ├── src                <- Source code for use in this project.
-    │   ├── process        <- Script to turn raw data into workable csv's
-    │   │   └── process.py
-    │   │
-    │   └── visualization  <- Scripts to create exploratory and results oriented visualizations
-    │       └── visualize.py
+    ├── environment.yml     <- The requirements to recreate the conda environment this notebook runs under
     │
-    ├── environment.yml    <- The requirements to recreate the conda environment this notebook runs under
-    │
-    └── requirements.txt   <- The requirements file for reproducing the analysis environment, e.g.
-                              generated with `pip freeze > requirements.txt`
+    └── requirements.txt    <- The requirements file for reproducing the analysis environment, e.g.
+                                generated with `pip freeze --format=freeze > requirements.txt`
 
 --------
-
-<p><small>Project based on the <a target="_blank" href="https://drivendata.github.io/cookiecutter-data-science/">cookiecutter data science project template</a>. #cookiecutterdatascience</small></p>
