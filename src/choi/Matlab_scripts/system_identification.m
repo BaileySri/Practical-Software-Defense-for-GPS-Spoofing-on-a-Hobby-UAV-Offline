@@ -6,7 +6,7 @@
 % output: state-space model (A,B,C,D matrices)
 
 pathname = 'logs/';     % log directory
-Ts = 0.004;               % sample time in log
+Ts = 0.1;               % sample time in log
 Ts2 = 0.0025;           % main loop rate
 files = dir(strcat(pathname, '/*.csv'));
 N = length(files);
@@ -16,8 +16,8 @@ y = cell(N);            %output
 for i = 1:N    
     file = fullfile(pathname, files(i).name)
     D = csvread(file, 3, 0);
-    u{i} = D(:, 4);     %target pitch
-    y{i} = D(:, 5);     %measured pitch       
+    u{i} = D(:, 2);     %target north
+    y{i} = D(:, 3);     %measured north       
     data{i} = iddata(y{i}, u{i}, Ts);
 end
 dataset = merge(data{1:N})

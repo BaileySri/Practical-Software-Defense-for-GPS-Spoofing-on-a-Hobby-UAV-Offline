@@ -8,7 +8,7 @@ pathname = 'logs/';     % log directory
 alpha_w = 1.1;           % window margin (1.1 adds 10%)
 alpha_th = 1.1;           % threhsold margin (1.1 adds 10%)
 
-Ts = 0.004;               % sample time in log
+Ts = 0.1;               % sample time in log
 %Ts2 = 0.0025;           % main loop rate
 files = dir(strcat(pathname, '/*.csv'));
 F = length(files);
@@ -24,8 +24,8 @@ ErrorThreshold = 0;
 for i = 1:F    
     file = fullfile(pathname, files(i).name);
     data = csvread(file, 3, 0);
-    input = data(:, 4);         % target pitch
-    output = data(:, 5);        % measured pitch    
+    input = data(:, 2);         % target north
+    output = data(:, 3);        % measured north    
     N = length(input);          % total length
     ts = 1:N;
         
