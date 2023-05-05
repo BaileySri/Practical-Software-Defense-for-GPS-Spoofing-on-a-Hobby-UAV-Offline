@@ -9,7 +9,7 @@ The Jupyter Notebooks made available in this repository show the offline process
 * [Loiter Missions](/notebooks/Spoofing%20Loiter.ipynb)
     * Looks at the performance of the defense for the Onestep and Multistep Loiter missions
 * [Flights](/notebooks/Spoofing%20Flights.ipynb)
-    * Looks at the performance of the defense for missions Flight 1-4 using OF and Gyroscope
+    * Looks at the performance of the defense for missions F-Subtle 1-4 using OF and Gyroscope
 * [Choi Control Invariant](/notebooks/Choi%20Model.ipynb)
     * Recreate the Choi control invariant to run over data logs using parameters derived from their [MATLAB scripts](/src/choi/Matlab_scripts/)
 
