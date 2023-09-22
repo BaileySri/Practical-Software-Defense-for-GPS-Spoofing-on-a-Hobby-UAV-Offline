@@ -1,4 +1,4 @@
-# You Can’t Get There from Here: Orthogonal Sensor Detection of UAV GPS Spoofing
+# Practical Software Defense for GPS Spoofing on a Hobby UAV
 
 
 The Jupyter Notebooks made available in this repository show the offline processing that was performed to determine parameters for testing and parse results.
