@@ -25,6 +25,8 @@ Assuming current directory is the base of the project repository (change NAME to
     ├── data
     │   └── interim <- Intermediate data that has been transformed
     │
+    ├── Additonal Figures   <- Data analysis not in notebooks, i.e., Innovation Checks and Sensor Noise
+    │
     ├── notebooks   <- Jupyter notebooks.
     │
     ├── setup.py    <- Make this project pip installable with `pip install -e`
